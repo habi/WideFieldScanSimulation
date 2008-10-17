@@ -45,11 +45,12 @@ if ShowSlices ==1
         end
 end
     
-InterpolateImage = Subscans
+InterpolatedImage = fct_InterpolateImage(SubScans(3).Image);
+
 %% output
-% figure('name','Merged Image')
-%     imshow(SubScans,[])
-%     axis on tight
+figure('name','Interpolated Image')
+     imshow(InterpolatedImage,[])
+     axis on
 
 
     
