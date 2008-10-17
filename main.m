@@ -19,7 +19,7 @@ useSheppLogan = 0;
 ShowSlicingDetails = 1;
 ShowSlices = 0;
 
-WorkPath='P:\MATLAB\widefieldscan-simulation\';
+WorkPath='P:\MATLAB\wfs-sim\';
 
 %% calculation
 if AmountOfSubScans >= 1
