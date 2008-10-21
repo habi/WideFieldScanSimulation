@@ -1,4 +1,6 @@
 function cutline = function_cutline(Image1,Image2)
+    Image1 = double(Image1);
+    Image2 = double(Image2);
     [ ImageHeight ImageWidth ] = size(Image1);
     GradientWidth = 2*ImageWidth-1;
     Gradient = zeros( 1,GradientWidth );

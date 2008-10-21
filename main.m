@@ -11,13 +11,40 @@ warning off Images:initSize:adjustingMag % suppress the warning about big ...
 tic; disp(['It`s now ' datestr(now) ]);
 
 %% setup
-SampleWidth = 2048;
-AmountOfSubScans = []; %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
-CameraWidth = 512;
-Overlap_px  = 50;
-useSheppLogan = 1;
-ShowSlicingDetails = 1;
-ShowSlices = 0;
+
+
+prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans','Overlap_px','UseSheppLogan?','ShowSlicingDetails','ShowSlices'};
+name='Input Parameters';
+numlines=1;
+%the default answer
+defaultanswer={'2048','512','[]','25','1','1','0'};
+% %creates the dialog box. the user input is stored into a cell array
+answer=inputdlg(prompt,name,numlines,defaultanswer);
+%notice we use {} to extract the data from the cell array
+SampleWidth        = str2num(answer{1});
+CameraWidth        = str2num(answer{2}); %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
+AmountOfSubScans   = str2num(answer{3});
+Overlap_px         = str2num(answer{4});
+useSheppLogan      = str2num(answer{5});
+ShowSlicingDetails = str2num(answer{6});
+ShowSlices         = str2num(answer{7});
+pause(0.5)
+% prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans','Overlap_px','Magnification','Binning','Exposure Time','AmountOfDarks','AmountOfFlats','SegmentQuality'};
+% name='Input Parameters';
+% numlines=1;
+% %the default answer
+% defaultanswer={'2048','512',[],'25','0','0','0','0','0','0'};
+% % %creates the dialog box. the user input is stored into a cell array
+% answer=inputdlg(prompt,name,numlines,defaultanswer);
+% %notice we use {} to extract the data from the cell array
+% SampleWidth = str2num(answer{1});
+% AmountOfSubScans = []; %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
+% CameraWidth = 512;
+% Overlap_px  = 50;
+% useSheppLogan = 1;
+% ShowSlicingDetails = 1;
+% ShowSlices = 0;
+
 
 WorkPath='P:\MATLAB\wfs-sim\';
 
@@ -46,39 +73,8 @@ if ShowSlices ==1
         end
 end
 
-% %notice this is a cell array!
-% prompt={'Enter in the first number','Enter in the second number'};
-%  
-% %name of the dialog box
-% name='Get user Input';
-%  
-% %number of lines visible for your input
-% numlines=1;
-%  
-% %the default answer
-% defaultanswer={'0','0'};
-%  
-% %creates the dialog box. the user input is stored into a cell array
-% answer=inputdlg(prompt,name,numlines,defaultanswer);
-%  
-% %notice we use {} to extract the data from the cell array
-% total = str2num(answer{1})+ str2num(answer{2});
-% disp(['The sum of the two inputs is ' num2str(total)])
-% 
-% %notice this is a cell array!
-% prompt={'Please Enter the Number of Lines I should interpolate over [25]','test'};
-% %name of the dialog box
-% name='Get user Input';
-% %number of lines visible for your input
-% numlines=1;
-% %the default answer
-% defaultanswer={'25'};
-% %creates the dialog box. the user input is stored into a cell array
-% answer=inputdlg(prompt,name,numlines,defaultanswer);
-% %notice we use {} to extract the data from the cell array
-
 InterpolateXthRow = 25;
-whichImage = ceil(AmountOfSubScans/2)
+whichImage = ceil(AmountOfSubScans/2);
 SubScans(whichImage).Image = fct_InterpolateImage(double(SubScans(whichImage).Image),InterpolateXthRow);
 figure('name','Interpolated Image')
      imshow(SubScans(whichImage).Image,[])
@@ -87,7 +83,7 @@ figure('name','Interpolated Image')
 %% cutline generation
 disp('the cutlines are:')
 for n=1:AmountOfSubScans-1
-    SubScans(n).Cutline=function_cutline(SubScans(n).Image,SubScans(n+1).Image)-1;
+    SubScans(n).Cutline=fct_cutline(SubScans(n).Image,SubScans(n+1).Image)-1;
  %   SubScans(n).Cutline = Overlap_px;
     disp(['from image ' num2str(n) ' to ' num2str(n+1) ': ' num2str(SubScans(n).Cutline)])
 end
