@@ -11,11 +11,11 @@ warning off Images:initSize:adjustingMag % suppress the warning about big ...
 tic; disp(['It`s now ' datestr(now) ]);
 
 %% setup
-SampleWidth = 2500;
-AmountOfSubScans = 3; %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
-CameraWidth = 512;
-Overlap_px  = 150;
-useSheppLogan = 1;
+SampleWidth = 1024;
+AmountOfSubScans = []; %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
+CameraWidth = 256;
+Overlap_px  = 100;
+useSheppLogan = 0;
 ShowSlicingDetails = 1;
 ShowSlices = 0;
 
@@ -35,6 +35,7 @@ end
 
 % inside fct_ImageSlicer we're defining SubScans = [struct('Image',[] )];
 SubScans = fct_ImageSlicer(Image,CameraWidth,Overlap_px,ShowSlicingDetails);
+AmountOfSubScans = length(SubScans);
 
 if ShowSlices ==1 
     figure
@@ -44,19 +45,54 @@ if ShowSlices ==1
                 axis on tight
         end
 end
-    
-InterpolatedImage = fct_InterpolateImage(double(SubScans(2).Image),25);
+
+%notice this is a cell array!
+prompt={'Please Enter the Number of Lines I should interpolate over [25]'};
+%name of the dialog box
+name='Get user Input';
+%number of lines visible for your input
+numlines=1;
+%the default answer
+defaultanswer={'25'};
+%creates the dialog box. the user input is stored into a cell array
+answer=inputdlg(prompt,name,numlines,defaultanswer);
+%notice we use {} to extract the data from the cell array
+InterpolateXthRow = str2num(answer{1});
+
+whichImage = ceil(AmountOfSubScans/2)
+SubScans(whichImage).Image = fct_InterpolateImage(double(SubScans(whichImage).Image),InterpolateXthRow);
 figure('name','Interpolated Image')
-     imshow(InterpolatedImage,[])
+     imshow(SubScans(whichImage).Image,[])
      axis on
 
+%% cutline generation
+disp('the cutlines are:')
+for n=1:AmountOfSubScans-1
+%    SubScans(n).Cutline=function_cutline(SubScans(n).Image,SubScans(n+1).Image)-1;
+    SubScans(n).Cutline = Overlap_px;
+    disp(['from image ' num2str(n) ' to ' num2str(n+1) ': ' num2str(SubScans(n).Cutline)])
+end
      
 %% output
+ConcatenatedImage = [];
+MergedImage = [];
+for n=1:AmountOfSubScans
+    ConcatenatedImage = [ ConcatenatedImage SubScans(n).Image ];
+    MergedImage = [ MergedImage SubScans(n).Image(:,1:size(SubScans(n).Image,2)-SubScans(n).Cutline)];
+end
 
-figure('name','Interpolated Image')
-     imshow(MergedImage,[])
-     axis on
 
+
+figure('name','Images')
+    subplot(211)
+        imshow(ConcatenatedImage,[])
+        axis on
+        title('Concatenated Image')
+%figure('name','Merged Image')
+    subplot(212)
+        imshow(MergedImage,[])
+        axis on
+        title('Merged Image')
 
     
     

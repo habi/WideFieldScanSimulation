@@ -32,13 +32,11 @@ function cutline = function_cutline(Image1,Image2)
             Gradient(ImageWidth) = ( TempValue2 - TempValue1) * .5;
         end
     end
-%MinimumPosition
-%Minimum
-    figure
-        subplot(211)
-            plot([1:GradientWidth],Gradient)
-        subplot(212)
-            plot([1:GradientWidth],GradientFunction)
+%     figure
+%         subplot(211)
+%             plot([1:GradientWidth],Gradient)
+%         subplot(212)
+%             plot([1:GradientWidth],GradientFunction)
     GradientHeight = [ 0 0 ];
     if MinimumPosition(1) > 1 && Gradient(MinimumPosition(1)-1) < 0 && Gradient(MinimumPosition(1)+1) > 0
         GradientHeight(1) = Gradient(MinimumPosition(1)+1) - Gradient(MinimumPosition(1)-1);
