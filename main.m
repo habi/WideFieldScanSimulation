@@ -12,10 +12,10 @@ tic; disp(['It`s now ' datestr(now) ]);
 
 %% setup
 SampleWidth = 2500;
-AmountOfSubScans = []; %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
+AmountOfSubScans = 3; %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
 CameraWidth = 512;
-Overlap_px  = 50;
-useSheppLogan = 0;
+Overlap_px  = 150;
+useSheppLogan = 1;
 ShowSlicingDetails = 1;
 ShowSlices = 0;
 
@@ -45,11 +45,12 @@ if ShowSlices ==1
         end
 end
     
-InterpolatedImage = fct_InterpolateImage(SubScans(3).Image);
+InterpolatedImage = fct_InterpolateImage(double(SubScans(2).Image),25);
 
 %% output
+MergedImage = [SubScans(1).Image InterpolatedImage SubScans(3).Image ];
 figure('name','Interpolated Image')
-     imshow(InterpolatedImage,[])
+     imshow(MergedImage,[])
      axis on
 
 
