@@ -46,9 +46,13 @@ if ShowSlices ==1
 end
     
 InterpolatedImage = fct_InterpolateImage(double(SubScans(2).Image),25);
+figure('name','Interpolated Image')
+     imshow(InterpolatedImage,[])
+     axis on
 
+     
 %% output
-MergedImage = [SubScans(1).Image InterpolatedImage SubScans(3).Image ];
+
 figure('name','Interpolated Image')
      imshow(MergedImage,[])
      axis on
