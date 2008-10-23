@@ -13,11 +13,11 @@ tic; disp(['It`s now ' datestr(now) ]);
 %% setup
 
 
-prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans','Overlap_px','UseSheppLogan?','ShowSlicingDetails','ShowSlices'};
+prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans','Overlap_px','UseSheppLogan?','ShowSlicingDetails','ShowSlices','InitialQuality','SegmentQuality'};
 name='Input Parameters';
 numlines=1;
 %the default answer
-defaultanswer={'2048','512','[]','25','1','1','0'};
+defaultanswer={'2048','512','3','128','1','1','0','100','50'};
 % %creates the dialog box. the user input is stored into a cell array
 answer=inputdlg(prompt,name,numlines,defaultanswer);
 %notice we use {} to extract the data from the cell array
@@ -28,6 +28,9 @@ Overlap_px         = str2num(answer{4});
 useSheppLogan      = str2num(answer{5});
 ShowSlicingDetails = str2num(answer{6});
 ShowSlices         = str2num(answer{7});
+InitialQuality     = str2num(answer{8});
+SegmentQuality     = str2num(answer{9});
+
 pause(0.5)
 % prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans','Overlap_px','Magnification','Binning','Exposure Time','AmountOfDarks','AmountOfFlats','SegmentQuality'};
 % name='Input Parameters';
@@ -83,7 +86,8 @@ figure('name','Interpolated Image')
 %% cutline generation
 disp('the cutlines are:')
 for n=1:AmountOfSubScans-1
-    SubScans(n).Cutline=fct_cutline(SubScans(n).Image,SubScans(n+1).Image)-1;
+    SubScans(n).Image=double(SubScans(n).Image)
+    SubScans(n).Cutline=find_overlap(SubScans(n).Image,SubScans(n+1).Image);
  %   SubScans(n).Cutline = Overlap_px;
     disp(['from image ' num2str(n) ' to ' num2str(n+1) ': ' num2str(SubScans(n).Cutline)])
 end
@@ -93,7 +97,7 @@ ConcatenatedImage = [];
 MergedImage = [];
 for n=1:AmountOfSubScans-1
     ConcatenatedImage = [ ConcatenatedImage SubScans(n).Image ];
-    MergedImage = [ MergedImage SubScans(n).Image(:,1:size(SubScans(n).Image,2)-SubScans(n).Cutline)];
+    MergedImage = [ MergedImage SubScans(n).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline))];
 end
 ConcatenatedImage = [ ConcatenatedImage SubScans(AmountOfSubScans).Image ];
 MergedImage = [ MergedImage SubScans(AmountOfSubScans).Image ];
@@ -109,25 +113,7 @@ figure('name','Images')
         axis on
         title('Merged Image')
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
+NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Overlap_px)),SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
 
 %% finish
 disp('I`m done with all you`ve asked for...')
