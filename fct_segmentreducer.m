@@ -42,10 +42,10 @@ function NumberOfProjections = fct_segmentreducer(TotalWidth_px,SegmentWidth_px,
     else
        NumberOfSubProjections = NumberOfSubProjections(2:size(NumberOfSubProjections,1),:);
     end
-    SegmentNumber
-    NumberOfProjections
-    NumberOfSubProjections
-    NumberOfCenterProjections
+%     SegmentNumber
+%     NumberOfProjections
+%     NumberOfSubProjections
+%     NumberOfCenterProjections
     NumberOfProjections = [ [ NumberOfProjections; ones(size(NumberOfSubProjections,1),1)*NumberOfProjections(length(NumberOfProjections)) ], ...
         [ NumberOfCenterProjections;NumberOfSubProjections ], ...
         [ NumberOfProjections; ones(size(NumberOfSubProjections,1),1)*NumberOfProjections(length(NumberOfProjections)) ] ];

@@ -13,11 +13,13 @@ tic; disp(['It`s now ' datestr(now) ]);
 %% setup
 
 
-prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans','Overlap_px','UseSheppLogan?','ShowSlicingDetails','ShowSlices','InitialQuality','SegmentQuality'};
+prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans',...
+    'Overlap_px','UseSheppLogan?','ShowSlicingDetails','ShowSlices',...
+    'CalculateCutline (0->hardcoded)','InitialQuality','SegmentQuality'};
 name='Input Parameters';
 numlines=1;
 %the default answer
-defaultanswer={'2048','512','3','128','1','1','0','100','50'};
+defaultanswer={'2048','512','3','128','1','1','0','0','100','50'};
 % %creates the dialog box. the user input is stored into a cell array
 answer=inputdlg(prompt,name,numlines,defaultanswer);
 %notice we use {} to extract the data from the cell array
@@ -28,29 +30,13 @@ Overlap_px         = str2num(answer{4});
 useSheppLogan      = str2num(answer{5});
 ShowSlicingDetails = str2num(answer{6});
 ShowSlices         = str2num(answer{7});
-InitialQuality     = str2num(answer{8});
-SegmentQuality     = str2num(answer{9});
-
-pause(0.5)
-% prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans','Overlap_px','Magnification','Binning','Exposure Time','AmountOfDarks','AmountOfFlats','SegmentQuality'};
-% name='Input Parameters';
-% numlines=1;
-% %the default answer
-% defaultanswer={'2048','512',[],'25','0','0','0','0','0','0'};
-% % %creates the dialog box. the user input is stored into a cell array
-% answer=inputdlg(prompt,name,numlines,defaultanswer);
-% %notice we use {} to extract the data from the cell array
-% SampleWidth = str2num(answer{1});
-% AmountOfSubScans = []; %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
-% CameraWidth = 512;
-% Overlap_px  = 50;
-% useSheppLogan = 1;
-% ShowSlicingDetails = 1;
-% ShowSlices = 0;
-
-
+CalculateCutline   = str2num(answer{8});
+InitialQuality     = str2num(answer{9});
+SegmentQuality     = str2num(answer{10});
+pause(0.01)
 WorkPath='P:\MATLAB\wfs-sim\';
-
+%% setup data structure to save the stuff into
+SubScans = [struct('Image',[],'Cutline',[],'NumProj',[],'Sinogram',[],'Reconstruction',[])];
 %% calculation
 if AmountOfSubScans >= 1
     CameraWidth = ceil(( SampleWidth + ((AmountOfSubScans+1)*Overlap_px))/ AmountOfSubScans)
@@ -67,7 +53,7 @@ end
 SubScans = fct_ImageSlicer(Image,CameraWidth,Overlap_px,ShowSlicingDetails);
 AmountOfSubScans = length(SubScans);
 
-if ShowSlices ==1 
+if ShowSlices == 1 
     figure
         for n=1:length(SubScans)
             subplot(1,length(SubScans),n)
@@ -86,9 +72,12 @@ figure('name','Interpolated Image')
 %% cutline generation
 disp('the cutlines are:')
 for n=1:AmountOfSubScans-1
-    SubScans(n).Image=double(SubScans(n).Image)
-    SubScans(n).Cutline=find_overlap(SubScans(n).Image,SubScans(n+1).Image);
- %   SubScans(n).Cutline = Overlap_px;
+    % SubScans(n).Image=double(SubScans(n).Image)
+    if CalculateCutline == 1
+        SubScans(n).Cutline=fct_cutline(SubScans(n).Image,SubScans(n+1).Image);
+    elseif CalculateCutline == 0
+        SubScans(n).Cutline = Overlap_px;
+    end
     disp(['from image ' num2str(n) ' to ' num2str(n+1) ': ' num2str(SubScans(n).Cutline)])
 end
      
@@ -115,6 +104,32 @@ figure('name','Images')
 
 NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Overlap_px)),SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
 
+%% radon and iradon
+sinbar = waitbar(0,'calculating sinograms...');
+figure
+for n=1:AmountOfSubScans
+    waitbar(n/AmountOfSubScans)
+    SubScans(n).NumProj = NumberOfProjections(1,n);
+    SubScans(n).Sinogram = radon(SubScans(n).Image,1:(180/(SubScans(n).NumProj/25)):180);
+    subplot(AmountOfSubScans,1,n)
+        imshow(SubScans(n).Sinogram',[])
+        title(['sinogram ' num2str(n)])
+    pause(0.01)
+end
+close(sinbar)
+
+recbar = waitbar(0,'calculating reconstruction...');
+figure
+for n=1:AmountOfSubScans
+    waitbar(n/AmountOfSubScans)
+    SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj/25)):180);
+    subplot(1,AmountOfSubScans,n)
+        imshow(SubScans(n).Reconstruction,[])
+                title(['reconstruction ' num2str(n)])
+    pause(0.01)
+end
+close(recbar)
+
 %% finish
 disp('I`m done with all you`ve asked for...')
 disp(['It`s now ' datestr(now) ]);
@@ -129,6 +144,6 @@ else
     minute = minute - 60*stunde;
     sekunde = sekunde - 60*minute;
     disp(['It took me approx ' num2str(round(minute)) ' minutes and ' ...
-        num2str(round(sekunde)) ' seconds to perform given task' ]);
+        num2str(round(sekunde)) ' seconds to perform the given task' ]);
 end
 %helpdlg('I`m done with all you`ve asked for...','Phew!');
