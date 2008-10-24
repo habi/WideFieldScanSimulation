@@ -36,7 +36,7 @@ SegmentQuality     = str2num(answer{10});
 pause(0.01)
 WorkPath='P:\MATLAB\wfs-sim\';
 %% setup data structure to save the stuff into
-SubScans = [struct('Image',[],'Cutline',[],'NumProj',[],'Sinogram',[],'Reconstruction',[])];
+SubScans = [struct('Image',[],'Cutline',[],'CutImage',[],'NumProj',[],'Sinogram',[],'Reconstruction',[])];
 %% calculation
 if AmountOfSubScans >= 1
     CameraWidth = ceil(( SampleWidth + ((AmountOfSubScans+1)*Overlap_px))/ AmountOfSubScans)
@@ -49,7 +49,7 @@ else
     Image = imresize(Image, [NaN SampleWidth]);
 end
 
-% inside fct_ImageSlicer we're defining SubScans = [struct('Image',[] )];
+% the function saves the sliced subscans in SubScans.Image
 SubScans = fct_ImageSlicer(Image,CameraWidth,Overlap_px,ShowSlicingDetails);
 AmountOfSubScans = length(SubScans);
 
@@ -86,8 +86,10 @@ ConcatenatedImage = [];
 MergedImage = [];
 for n=1:AmountOfSubScans-1
     ConcatenatedImage = [ ConcatenatedImage SubScans(n).Image ];
-    MergedImage = [ MergedImage SubScans(n).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline))];
+    SubScans(n).CutImage = SubScans(n).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
+    MergedImage = [ MergedImage SubScans(n).CutImage ];
 end
+SubScans(AmountOfSubScans).CutImage = SubScans(AmountOfSubScans).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
 ConcatenatedImage = [ ConcatenatedImage SubScans(AmountOfSubScans).Image ];
 MergedImage = [ MergedImage SubScans(AmountOfSubScans).Image ];
 
@@ -104,31 +106,37 @@ figure('name','Images')
 
 NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Overlap_px)),SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
 
-%% radon and iradon
-sinbar = waitbar(0,'calculating sinograms...');
-figure
-for n=1:AmountOfSubScans
-    waitbar(n/AmountOfSubScans)
-    SubScans(n).NumProj = NumberOfProjections(1,n);
-    SubScans(n).Sinogram = radon(SubScans(n).Image,1:(180/(SubScans(n).NumProj/25)):180);
-    subplot(AmountOfSubScans,1,n)
-        imshow(SubScans(n).Sinogram',[])
-        title(['sinogram ' num2str(n)])
-    pause(0.01)
-end
-close(sinbar)
-
-recbar = waitbar(0,'calculating reconstruction...');
-figure
-for n=1:AmountOfSubScans
-    waitbar(n/AmountOfSubScans)
-    SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj/25)):180);
-    subplot(1,AmountOfSubScans,n)
-        imshow(SubScans(n).Reconstruction,[])
-                title(['reconstruction ' num2str(n)])
-    pause(0.01)
-end
-close(recbar)
+% %% radon and iradon
+% sinbar = waitbar(0,'calculating sinograms...');
+% figure
+% for n=1:AmountOfSubScans
+%     SubScans(n).NumProj = NumberOfProjections(1,n);
+%     SubScans(n).Sinogram = radon(SubScans(n).CutImage,1:(180/(SubScans(n).NumProj)):180);
+%     subplot(AmountOfSubScans,1,n)
+%         imshow(SubScans(n).Sinogram',[])
+%         title(['Sinogram Nr. ' num2str(n)])
+%         axis on
+%     pause(0.01)
+%     waitbar(n/AmountOfSubScans)
+% end
+% close(sinbar)
+% 
+% recbar = waitbar(0,'calculating reconstruction...');
+% figure
+% for n=1:AmountOfSubScans
+%     SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180);
+%     subplot(2,AmountOfSubScans,n)
+%         imshow(SubScans(n).Reconstruction,[])
+%         title(['Reconstruction Nr. ' num2str(n)])
+%         axis on
+%     pause(0.01)
+%     waitbar(n/AmountOfSubScans)
+% end
+%     subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
+%         imshow([SubScans(1).Reconstruction SubScans(2).Reconstruction SubScans(3).Reconstruction],[])
+%         title('Concatenated Reconstructions')
+%         axis on
+% close(recbar)
 
 %% finish
 disp('I`m done with all you`ve asked for...')

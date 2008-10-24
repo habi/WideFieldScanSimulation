@@ -33,7 +33,7 @@ function NumberOfProjections = fct_segmentreducer(TotalWidth_px,SegmentWidth_px,
       return;
     end
 
-    NumberOfSubProjections = h_reducesegments(NextTotalWidth_px,SegmentWidth_px - 2 * ImageAtomWidth_px,ImageAtomWidth_px,SegmentNumber-2,1,SegmentQuality);
+    NumberOfSubProjections = fct_segmentreducer(NextTotalWidth_px,SegmentWidth_px - 2 * ImageAtomWidth_px,ImageAtomWidth_px,SegmentNumber-2,1,SegmentQuality);
     NumberOfCenterProjections = NumberOfProjections * ones(1,SegmentNumber-2);
 
     if size(NumberOfSubProjections,1) < 2
