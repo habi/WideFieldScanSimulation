@@ -1,12 +1,9 @@
 function NumberOfProjections = fct_segmentreducer(TotalWidth_px,SegmentWidth_px,ImageAtomWidth_px,SegmentNumber,InitialQuality,SegmentQuality)
-
     NumberOfProjections = [];
-
     if SegmentNumber < 1
         disp('segment <1')
         return
     end
-
     NumberOfProjections = [ InitialQuality * TotalWidth_px ];
     SegmentCounter = 1;
     NextTotalWidth_px = TotalWidth_px;
