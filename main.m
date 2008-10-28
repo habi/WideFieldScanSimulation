@@ -19,7 +19,7 @@ prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScan
 name='Input Parameters';
 numlines=1;
 %the default answer
-defaultanswer={'2048','512','3','128','1','1','0','0','100','50'};
+defaultanswer={'2048','[]','3','128','0','1','0','0','100','50'};
 % %creates the dialog box. the user input is stored into a cell array
 answer=inputdlg(prompt,name,numlines,defaultanswer);
 %notice we use {} to extract the data from the cell array
@@ -62,7 +62,7 @@ if ShowSlices == 1
         end
 end
 
-InterpolateXthRow = 25;
+InterpolateXthRow = 50;
 whichImage = ceil(AmountOfSubScans/2);
 SubScans(whichImage).Image = fct_InterpolateImage(double(SubScans(whichImage).Image),InterpolateXthRow);
 figure('name','Interpolated Image')
@@ -104,44 +104,56 @@ figure('name','Images')
         axis on
         title('Merged Image')
 
-NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Overlap_px)),SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
+NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Overlap_px)),...
+    SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
 
-% %% radon and iradon
-% sinbar = waitbar(0,'calculating sinograms...');
-% figure
-% for n=1:AmountOfSubScans
-%     SubScans(n).NumProj = NumberOfProjections(1,n);
-%     SubScans(n).Sinogram = radon(SubScans(n).CutImage,1:(180/(SubScans(n).NumProj)):180);
-%     subplot(AmountOfSubScans,1,n)
-%         imshow(SubScans(n).Sinogram',[])
-%         title(['Sinogram Nr. ' num2str(n)])
-%         axis on
-%     pause(0.01)
-%     waitbar(n/AmountOfSubScans)
-% end
-% close(sinbar)
-% 
-% recbar = waitbar(0,'calculating reconstruction...');
-% figure
-% for n=1:AmountOfSubScans
-%     SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180);
-%     subplot(2,AmountOfSubScans,n)
-%         imshow(SubScans(n).Reconstruction,[])
-%         title(['Reconstruction Nr. ' num2str(n)])
-%         axis on
-%     pause(0.01)
-%     waitbar(n/AmountOfSubScans)
-% end
-%     subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
-%         imshow([SubScans(1).Reconstruction SubScans(2).Reconstruction SubScans(3).Reconstruction],[])
-%         title('Concatenated Reconstructions')
-%         axis on
-% close(recbar)
+
+%% radon and iradon
+sinbar = waitbar(0,'calculating sinograms...');
+figure
+
+factor = 10
+for Protocol=1%1:length(NumberOfProjections(:,1))
+    for n=1:AmountOfSubScans
+        SubScans(n).NumProj = NumberOfProjections(Protocol,n)/factor;
+        SubScans(n).Sinogram = radon(SubScans(n).CutImage,1:(180/(SubScans(n).NumProj)):180);
+        subplot(AmountOfSubScans,1,n)
+            imshow(SubScans(n).Sinogram',[])
+            title(['Sinogram Nr. ' num2str(n)])
+            axis on
+        pause(0.01)
+        waitbar(n/AmountOfSubScans)
+    end
+end
+close(sinbar)
+ 
+recbar = waitbar(0,'calculating reconstruction...');
+ConcatenatedReconstruction = [];
+figure
+for n=1:AmountOfSubScans
+    
+%                              = iradon(P,                   theta,                            interp,  filter,   frequency_scaling, output_size
+    SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180,'linear','Ram-lak',1,CameraWidth-Overlap_px);
+    ConcatenatedReconstruction = [ ConcatenatedReconstruction SubScans(n).Reconstruction ];
+    subplot(2,AmountOfSubScans,n)
+        imshow(SubScans(n).Reconstruction,[])
+        title(['Reconstruction Nr. ' num2str(n)])
+        axis on
+    pause(0.01)
+    waitbar(n/AmountOfSubScans)
+end
+    subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
+        imshow(ConcatenatedReconstruction,[])
+        title('Concatenated Reconstructions')
+        axis on
+close(recbar)
+
+%figure, imcontour(ConcatenatedReconstruction,3)
 
 %% finish
 disp('I`m done with all you`ve asked for...')
 disp(['It`s now ' datestr(now) ]);
-zyt=toc;sekunde=round(zyt);minute = round(sekunde/60);stunde = round(minute/60);
+zyt=toc;sekunde=round(zyt);minute = floor(sekunde/60);stunde = floor(minute/60);
 if stunde >= 1
     minute = minute - 60*stunde;
     sekunde = sekunde - 60*minute - 3600*stunde;
