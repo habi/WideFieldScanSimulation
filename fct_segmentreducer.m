@@ -19,7 +19,7 @@ function NumberOfProjections = fct_segmentreducer(TotalWidth_px,SegmentWidth_px,
 
     if length(NumberOfProjections) > 1
         if abs(NumberOfProjections(SegmentCounter) - LowestNumber) > abs(NumberOfProjections(SegmentCounter-1) - LowestNumber)
-            NumberOfProjections = NumberOfProjections(1:length(NumberOfProjections)-1)
+            NumberOfProjections = NumberOfProjections(1:length(NumberOfProjections)-1);
         end
     %else
     %    NumberOfProjections = [];
@@ -30,11 +30,11 @@ function NumberOfProjections = fct_segmentreducer(TotalWidth_px,SegmentWidth_px,
       return;
     end
 
-    NumberOfSubProjections = fct_segmentreducer(NextTotalWidth_px,SegmentWidth_px - 2 * ImageAtomWidth_px,ImageAtomWidth_px,SegmentNumber-2,1,SegmentQuality)
-    NumberOfCenterProjections = NumberOfProjections * ones(1,SegmentNumber-2)
+    NumberOfSubProjections = fct_segmentreducer(NextTotalWidth_px,SegmentWidth_px - 2 * ImageAtomWidth_px,ImageAtomWidth_px,SegmentNumber-2,1,SegmentQuality);
+    NumberOfCenterProjections = NumberOfProjections * ones(1,SegmentNumber-2);
 
     if size(NumberOfSubProjections,1) < 2
-        NumberOfProjections = [ NumberOfProjections, NumberOfCenterProjections, NumberOfProjections ]  
+        NumberOfProjections = [ NumberOfProjections, NumberOfCenterProjections, NumberOfProjections ];
         return
     else
        NumberOfSubProjections = NumberOfSubProjections(2:size(NumberOfSubProjections,1),:);
@@ -45,5 +45,5 @@ function NumberOfProjections = fct_segmentreducer(TotalWidth_px,SegmentWidth_px,
 %     NumberOfCenterProjections
     NumberOfProjections = [ [ NumberOfProjections; ones(size(NumberOfSubProjections,1),1)*NumberOfProjections(length(NumberOfProjections)) ], ...
         [ NumberOfCenterProjections;NumberOfSubProjections ], ...
-        [ NumberOfProjections; ones(size(NumberOfSubProjections,1),1)*NumberOfProjections(length(NumberOfProjections)) ] ]
+        [ NumberOfProjections; ones(size(NumberOfSubProjections,1),1)*NumberOfProjections(length(NumberOfProjections)) ] ];
 end

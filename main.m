@@ -108,14 +108,20 @@ NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Over
     SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
 
 
+%% calculate global reduction factor to speed things up a bit
+TotalProj = 0;
+for n=1:AmountOfSubScans
+    SubScans(n).NumProj = NumberOfProjections(1,n);
+    TotalMaxProj = TotalProj + SubScans(n).NumProj;
+end
+factor = TotalMaxProj/1024;
+
 %% radon and iradon
 sinbar = waitbar(0,'calculating sinograms...');
 figure
-
-factor = 10
 for Protocol=1%1:length(NumberOfProjections(:,1))
     for n=1:AmountOfSubScans
-        SubScans(n).NumProj = NumberOfProjections(Protocol,n)/factor;
+        SubScans(n).NumProj = SubScans(n).NumProj/factor;
         SubScans(n).Sinogram = radon(SubScans(n).CutImage,1:(180/(SubScans(n).NumProj)):180);
         subplot(AmountOfSubScans,1,n)
             imshow(SubScans(n).Sinogram',[])
