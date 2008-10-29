@@ -179,17 +179,24 @@ for Protocol=1:length(NumberOfProjections(:,1))
 end
 
 %% calculate pixelwise Error
+ figure('Position',[100 100 1536 800],'name',['Diff(Protocol1-Protocol)-Image for all ' num2str(Protocol) ' Protocols'])
 for Protocol=1:length(NumberOfProjections(:,1))
     ConcatenatedReconstructions(Protocol).DiffImage = ( ConcatenatedReconstructions(1).Image - ConcatenatedReconstructions(Protocol).Image);
     ConcatenatedReconstructions(Protocol).Error = sum( sum( ConcatenatedReconstructions(Protocol).DiffImage .^2 ) );% / size(ConcatenatedReconstructions(Protocol).Image,1) / size(ConcatenatedReconstructions(Protocol).Image,2);
-    figure
+%    figure
+    subplot(ceil(length(NumberOfProjections(:,1))/2),2,Protocol)
         imshow(ConcatenatedReconstructions(Protocol).DiffImage,[])
-        title(['Error: ' num2str(ConcatenatedReconstructions(Protocol).Error)])
+        title(['Protocol: ' num2str(Protocol) ' - Error: ' num2str(round(ConcatenatedReconstructions(Protocol).Error))])
 end
 
 %% display error
 figure
     semilogy([ConcatenatedReconstructions.TotalNumProj],[ConcatenatedReconstructions.Error]);
+    xlabel('Total Amount of simulated Projections');
+	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$','Interpreter','latex');
+    grid on;
+figure
+    plot([ConcatenatedReconstructions.TotalNumProj],[ConcatenatedReconstructions.Error]);
     xlabel('Total Amount of simulated Projections');
 	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$','Interpreter','latex');
     grid on;
