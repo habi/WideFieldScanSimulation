@@ -19,7 +19,7 @@ prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScan
 name='Input Parameters';
 numlines=1;
 %the default answer
-defaultanswer={'2048','[]','3','128','0','1','0','0','100','50'};
+defaultanswer={'2048','[]','3','128','1','0','0','0','100','25'};
 % %creates the dialog box. the user input is stored into a cell array
 answer=inputdlg(prompt,name,numlines,defaultanswer);
 %notice we use {} to extract the data from the cell array
@@ -43,7 +43,7 @@ if AmountOfSubScans >= 1
 end
 
 if useSheppLogan==1
-    Image = imnoise(phantom(SampleWidth),'gaussian');
+    Image = imnoise(phantom(SampleWidth),'gaussian',0,0.005);
 else
     Image = imread([ WorkPath 'R108C04C_merge0001.tif']);
     Image = imresize(Image, [NaN SampleWidth]);
@@ -65,9 +65,9 @@ end
 InterpolateXthRow = 50;
 whichImage = ceil(AmountOfSubScans/2);
 SubScans(whichImage).Image = fct_InterpolateImage(double(SubScans(whichImage).Image),InterpolateXthRow);
-figure('name','Interpolated Image')
-     imshow(SubScans(whichImage).Image,[])
-     axis on
+% figure('name','Interpolated Image')
+%      imshow(SubScans(whichImage).Image,[])
+%      axis on
 
 %% cutline generation
 disp('the cutlines are:')
@@ -109,50 +109,57 @@ NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Over
 
 
 %% calculate global reduction factor to speed things up a bit
-TotalProj = 0;
-for n=1:AmountOfSubScans
-    SubScans(n).NumProj = NumberOfProjections(1,n);
-    TotalMaxProj = TotalProj + SubScans(n).NumProj;
+TotalProj(length(NumberOfProjections(:,1))) = 0;
+ConcatenatedReconstructions = [struct('Image',[],'TotalNumProj','0','DiffImage',[],'Error',[])];
+for Protocol=1:length(NumberOfProjections(:,1))
+    for n=1:AmountOfSubScans
+        SubScans(n).NumProj = NumberOfProjections(Protocol,n);
+        TotalProj(Protocol) = TotalProj(Protocol) + SubScans(n).NumProj;
+        ConcatenatedReconstructions(Protocol).TotalNumProj = TotalProj(Protocol);%ConcatenatedReconstructions(Protocol).TotalNumProj + SubScans(n).NumProj;
+    end
+    if Protocol == 1
+        factor = round(ConcatenatedReconstructions(Protocol).TotalNumProj/256);
+    else
+    end
 end
-factor = TotalMaxProj/512;
 
 %% radon and iradon
-for Protocol=1:2%1:length(NumberOfProjections(:,1))
+for Protocol=1:length(NumberOfProjections(:,1))
     sinbar = waitbar(0,'calculating sinograms...');
-    figure
+%     figure
     for n=1:AmountOfSubScans
         SubScans(n).NumProj = NumberOfProjections(Protocol,n)/factor;
         SubScans(n).Sinogram = radon(SubScans(n).CutImage,1:(180/(SubScans(n).NumProj)):180);
-        subplot(AmountOfSubScans,1,n)
-            imshow(SubScans(n).Sinogram',[])
-            title(['Sinogram Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
-            axis on
-        pause(0.01)
+%         subplot(AmountOfSubScans,1,n)
+%             imshow(SubScans(n).Sinogram',[])
+%             title(['Sinogram Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
+%             axis on
+%         pause(0.01)
         waitbar(n/AmountOfSubScans)
     end
     close(sinbar)
 
-    recbar = waitbar(0,'calculating reconstruction...');
-    ConcatenatedReconstruction = [];
-    figure
+    recbar = waitbar(0,'calculating reconstructions...');
+    ConcatenatedReconstructions(Protocol).Image = [];
+%     figure
     for n=1:AmountOfSubScans
-        SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180,'linear','Ram-lak',1,CameraWidth-Overlap_px);
-        ConcatenatedReconstruction = [ ConcatenatedReconstruction SubScans(n).Reconstruction ];
-        subplot(2,AmountOfSubScans,n)
-            imshow(SubScans(n).Reconstruction,[])
-            title(['Reconstruction Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
-            axis on
-        pause(0.01)
+        SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180,...
+            'linear','Ram-lak',1,CameraWidth-Overlap_px);
+        ConcatenatedReconstructions(Protocol).Image = [ ConcatenatedReconstructions(Protocol).Image SubScans(n).Reconstruction ];
+%         subplot(2,AmountOfSubScans,n)
+%             imshow(SubScans(n).Reconstruction,[])
+%             title(['Reconstruction Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
+%             axis on
+%         pause(0.01)
          waitbar(n/AmountOfSubScans)
     end
-        subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
-            imshow(ConcatenatedReconstruction,[])
-            title('Concatenated Reconstructions')
-            axis on
+%         subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
+%             imshow(ConcatenatedReconstruction,[])
+%             title('Concatenated Reconstructions')
+%             axis on
     close(recbar)
     
-    scrsz = get(0,'ScreenSize');
-    figure('Position',[1 scrsz(4) scrsz(3) scrsz(4)],'name','All Images')
+    figure('Position',[100 100 1536 800],'name',['All Images for Protocol ' num2str(Protocol)])
     for n=1:AmountOfSubScans
         subplot(AmountOfSubScans+2,2,2*n-1)
             imshow(SubScans(n).Sinogram',[])
@@ -163,12 +170,24 @@ for Protocol=1:2%1:length(NumberOfProjections(:,1))
             title(['Reconstruction Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
             axis on
         subplot(AmountOfSubScans+2,2,[(2*AmountOfSubScans)+1 (2*AmountOfSubScans)+4])
-            imshow(ConcatenatedReconstruction,[])
-            title('Concatenated Reconstructions')
+            imshow(ConcatenatedReconstructions(Protocol).Image,[])
+            title(['Concatenated Reconstructions - Protocol Nr. ' num2str(Protocol)])
             axis on
     end    
 end
-%figure, imcontour(ConcatenatedReconstruction,3)
+
+%% calculate pixelwise Error
+for Protocol=1:length(NumberOfProjections(:,1))
+    ConcatenatedReconstructions(Protocol).DiffImage = ( ConcatenatedReconstructions(1).Image - ConcatenatedReconstructions(Protocol).Image);
+    ConcatenatedReconstructions(Protocol).Error = sum( sum( ConcatenatedReconstructions(Protocol).DiffImage .^2 ) );% / size(ConcatenatedReconstructions(Protocol).Image,1) / size(ConcatenatedReconstructions(Protocol).Image,2);
+    figure
+        imshow(ConcatenatedReconstructions(Protocol).DiffImage,[])
+        title(['Error: ' num2str(ConcatenatedReconstructions(Protocol).Error)])
+end
+
+%% display error
+figure
+    semilogx(ConcatenatedReconstructions.TotalNumProj,ConcatenatedReconstructions.Error)
 
 %% finish
 disp('I`m done with all you`ve asked for...')
