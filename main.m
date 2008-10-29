@@ -15,11 +15,12 @@ tic; disp(['It`s now ' datestr(now) ]);
 
 prompt={'FOV_um (SampleWidth)','CameraWidth (DetectorWidth_px)','AmountOfSubScans',...
     'Overlap_px','UseSheppLogan?','ShowSlicingDetails','ShowSlices',...
-    'CalculateCutline (0->hardcoded)','InitialQuality','SegmentQuality'};
+    'Calculate the Cutline? (answering `0` -> hardcoded)','InitialQuality','SegmentQuality'...
+    'Reduction Factor for Simulation'};
 name='Input Parameters';
 numlines=1;
 %the default answer
-defaultanswer={'2048','[]','3','128','1','0','0','0','100','25'};
+defaultanswer={'2048','[]','3','128','1','0','0','0','100','10','2'};
 % %creates the dialog box. the user input is stored into a cell array
 answer=inputdlg(prompt,name,numlines,defaultanswer);
 %notice we use {} to extract the data from the cell array
@@ -33,6 +34,7 @@ ShowSlices         = str2num(answer{7});
 CalculateCutline   = str2num(answer{8});
 InitialQuality     = str2num(answer{9});
 SegmentQuality     = str2num(answer{10});
+ReduceIt           = str2num(answer{11});
 pause(0.01)
 WorkPath='P:\MATLAB\wfs-sim\';
 %% setup data structure to save the stuff into
@@ -43,7 +45,7 @@ if AmountOfSubScans >= 1
 end
 
 if useSheppLogan==1
-    Image = imnoise(phantom(SampleWidth),'gaussian',0,0.005);
+    Image = imnoise(phantom(SampleWidth),'gaussian');
 else
     Image = imread([ WorkPath 'R108C04C_merge0001.tif']);
     Image = imresize(Image, [NaN SampleWidth]);
@@ -62,7 +64,7 @@ if ShowSlices == 1
         end
 end
 
-InterpolateXthRow = 50;
+InterpolateXthRow = 4;
 whichImage = ceil(AmountOfSubScans/2);
 SubScans(whichImage).Image = fct_InterpolateImage(double(SubScans(whichImage).Image),InterpolateXthRow);
 % figure('name','Interpolated Image')
@@ -105,7 +107,7 @@ figure('name','Images')
         title('Merged Image')
 
 NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Overlap_px)),...
-    SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
+    SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100);
 
 
 %% calculate global reduction factor to speed things up a bit
@@ -118,7 +120,7 @@ for Protocol=1:length(NumberOfProjections(:,1))
         ConcatenatedReconstructions(Protocol).TotalNumProj = TotalProj(Protocol);%ConcatenatedReconstructions(Protocol).TotalNumProj + SubScans(n).NumProj;
     end
     if Protocol == 1
-        factor = round(ConcatenatedReconstructions(Protocol).TotalNumProj/256);
+        factor = round(ConcatenatedReconstructions(Protocol).TotalNumProj/(SampleWidth/ReduceIt));
     else
     end
 end
@@ -187,7 +189,10 @@ end
 
 %% display error
 figure
-    semilogx(ConcatenatedReconstructions.TotalNumProj,ConcatenatedReconstructions.Error)
+    semilogy([ConcatenatedReconstructions.TotalNumProj],[ConcatenatedReconstructions.Error]);
+    xlabel('Total Amount of simulated Projections');
+	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$','Interpreter','latex');
+    grid on;
 
 %% finish
 disp('I`m done with all you`ve asked for...')
