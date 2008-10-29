@@ -114,46 +114,60 @@ for n=1:AmountOfSubScans
     SubScans(n).NumProj = NumberOfProjections(1,n);
     TotalMaxProj = TotalProj + SubScans(n).NumProj;
 end
-factor = TotalMaxProj/1024;
+factor = TotalMaxProj/512;
 
 %% radon and iradon
-sinbar = waitbar(0,'calculating sinograms...');
-figure
-for Protocol=1%1:length(NumberOfProjections(:,1))
+for Protocol=1:2%1:length(NumberOfProjections(:,1))
+    sinbar = waitbar(0,'calculating sinograms...');
+    figure
     for n=1:AmountOfSubScans
-        SubScans(n).NumProj = SubScans(n).NumProj/factor;
+        SubScans(n).NumProj = NumberOfProjections(Protocol,n)/factor;
         SubScans(n).Sinogram = radon(SubScans(n).CutImage,1:(180/(SubScans(n).NumProj)):180);
         subplot(AmountOfSubScans,1,n)
             imshow(SubScans(n).Sinogram',[])
-            title(['Sinogram Nr. ' num2str(n)])
+            title(['Sinogram Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
             axis on
         pause(0.01)
         waitbar(n/AmountOfSubScans)
     end
-end
-close(sinbar)
- 
-recbar = waitbar(0,'calculating reconstruction...');
-ConcatenatedReconstruction = [];
-figure
-for n=1:AmountOfSubScans
-    
-%                              = iradon(P,                   theta,                            interp,  filter,   frequency_scaling, output_size
-    SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180,'linear','Ram-lak',1,CameraWidth-Overlap_px);
-    ConcatenatedReconstruction = [ ConcatenatedReconstruction SubScans(n).Reconstruction ];
-    subplot(2,AmountOfSubScans,n)
-        imshow(SubScans(n).Reconstruction,[])
-        title(['Reconstruction Nr. ' num2str(n)])
-        axis on
-    pause(0.01)
-    waitbar(n/AmountOfSubScans)
-end
-    subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
-        imshow(ConcatenatedReconstruction,[])
-        title('Concatenated Reconstructions')
-        axis on
-close(recbar)
+    close(sinbar)
 
+    recbar = waitbar(0,'calculating reconstruction...');
+    ConcatenatedReconstruction = [];
+    figure
+    for n=1:AmountOfSubScans
+        SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180,'linear','Ram-lak',1,CameraWidth-Overlap_px);
+        ConcatenatedReconstruction = [ ConcatenatedReconstruction SubScans(n).Reconstruction ];
+        subplot(2,AmountOfSubScans,n)
+            imshow(SubScans(n).Reconstruction,[])
+            title(['Reconstruction Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
+            axis on
+        pause(0.01)
+         waitbar(n/AmountOfSubScans)
+    end
+        subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
+            imshow(ConcatenatedReconstruction,[])
+            title('Concatenated Reconstructions')
+            axis on
+    close(recbar)
+    
+    scrsz = get(0,'ScreenSize');
+    figure('Position',[1 scrsz(4) scrsz(3) scrsz(4)],'name','All Images')
+    for n=1:AmountOfSubScans
+        subplot(AmountOfSubScans+2,2,2*n-1)
+            imshow(SubScans(n).Sinogram',[])
+            title(['Sinogram Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
+            axis on
+        subplot(AmountOfSubScans+2,2,2*n)
+            imshow(SubScans(n).Reconstruction,[])
+            title(['Reconstruction Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
+            axis on
+        subplot(AmountOfSubScans+2,2,[(2*AmountOfSubScans)+1 (2*AmountOfSubScans)+4])
+            imshow(ConcatenatedReconstruction,[])
+            title('Concatenated Reconstructions')
+            axis on
+    end    
+end
 %figure, imcontour(ConcatenatedReconstruction,3)
 
 %% finish
