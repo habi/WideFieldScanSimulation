@@ -30,7 +30,7 @@ function [AbsError, AverageError] = fct_ModelCalculation(Sinogram,DetectorWidth,
 
     %% disp
     if FigureNr > 0 
-        figure(FigureNr)
+        figure(FigureNr,'title',['Protocol ' num2str(ProtocolNumProj)])
             subplot(221)
                 imshow(Sinogram',[])
                 axis on

@@ -20,7 +20,7 @@ prompt={'FOV_um (SampleWidth in Pixels)','CameraWidth (DetectorWidth_px)','Amoun
 name='Input Parameters';
 numlines=1;
 %the default answer
-defaultanswer={'2048','[]','3','128','1','0','0','0','100','30','2','100'};
+defaultanswer={'2048','[]','3','128','1','0','0','0','100','10','2','100'};
 % %creates the dialog box. the user input is stored into a cell array
 answer=inputdlg(prompt,name,numlines,defaultanswer);
 %notice we use {} to extract the data from the cell array
@@ -145,7 +145,7 @@ AbsError = [];
 AverageError = [];
 TotalScanTime = [];
 FigureNumber = 0;
-ShowFigure = 1;
+ShowFigure = 0;
 
 for Protocol = 1:size(ModelNumberOfProjections,1)
     disp('---');
@@ -155,7 +155,7 @@ for Protocol = 1:size(ModelNumberOfProjections,1)
     end
     [ AbsError(Protocol), AverageError(Protocol) ] = ...
         fct_ModelCalculation(ModelSinogram,ModelDetectorWidth,ModelOverlap,ModelNumberOfProjections(Protocol,:),ModelPhantom,FigureNumber);
-    TotalScanTime(Protocol) = sum(ModelNumberOfProjections(Protocol,:))*ExposureTime/1000;
+    TotalScanTime(Protocol) = sum(NumberOfProjections(Protocol,:)) * ExposureTime / 1000;
 end
 
 %% Normalizing the Error
