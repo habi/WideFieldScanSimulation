@@ -1,17 +1,18 @@
-function SubScans=fct_ImageSlicer(InputImage,DetectorWidth,Overlap_px,showImg)
+function SubScans=fct_ImageSlicer(InputImage,AmountOfSubScans,DetectorWidth,Overlap_px,showImg)
     wb = waitbar(0,'Please wait...');
     ImageHeight = size(InputImage,1);
     ImageWidth = size(InputImage,2);
-    AmountOfSubScans = ceil( ImageWidth / ( DetectorWidth - Overlap_px) );
-    EnlargedImage = [ InputImage zeros(ImageHeight,DetectorWidth+AmountOfSubScans*Overlap_px)];
-    EndWidth=Overlap_px+1;
+    EnlargedImage = [ InputImage zeros(ImageHeight,2*Overlap_px)];
     ConcatenatedImage = [];
+    EndWidth=Overlap_px+1;
     for n=1:AmountOfSubScans
         waitbar(n/AmountOfSubScans)
-        StartWidth = EndWidth - Overlap_px;
+        StartWidth = EndWidth - ( Overlap_px / 2 );
         EndWidth = StartWidth + DetectorWidth;
         SubScans(n).Image= EnlargedImage(:,StartWidth:EndWidth);
         ConcatenatedImage = [ConcatenatedImage SubScans(n).Image];
+        pause(1)
+        %disp(['SubScan ' num2str(n) ': StartWidth =' num2str(StartWidth) ', EndWidth =' num2str(EndWidth) ]);
     end
     close(wb)          
     if showImg == 1

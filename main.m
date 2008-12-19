@@ -11,39 +11,99 @@ warning off Images:initSize:adjustingMag % suppress the warning about big ...
 tic; disp(['It`s now ' datestr(now) ]);
 
 %% setup
-
-
-prompt={'FOV_um (SampleWidth in Pixels)','CameraWidth (DetectorWidth_px)','AmountOfSubScans',...
-    'Overlap_px','UseSheppLogan?','ShowSlicingDetails','ShowSlices',...
-    'Calculate the Cutline? (answering `0` -> hardcoded)','InitialQuality','SegmentQuality'...
-    'Reduction Factor for Simulation','Exposure Time (ms)'};
+prompt={'FOV to achieve (in mm)',...                    %1
+    'DetectorWidth (in Pixels)',...                     %2
+    'AmountOfSubScans',...                              %3
+    'Magnification',...                                 %4
+    'Binning',...                                       %5
+    'Overlap',...                                       %6
+    'UseSheppLogan?',...                                %7
+    'ShowSlicingDetails',...                        	%8
+    'ShowSlices',...                                    %9
+    'Calculate the Cutline? (answering `0`=don`t calculate)',...    %10
+    'MaximalQuality',...                                %11
+    'MinimalQuality'...                                 %12
+    'Simulation-Calculation Size (512,1024,2048)',...   %13
+    'writeout',...                                      %14
+    'Exposure Time (ms)'};                              %15
 name='Input Parameters';
 numlines=1;
 %the default answer
-defaultanswer={'2048','[]','3','128','1','0','0','0','100','10','2','100'};
-% %creates the dialog box. the user input is stored into a cell array
+defaultanswer={'2.6',...  % 1 FOV
+    '1024',...          % 2 DetectorWidth
+    '[]',...            % 3 How many SubScans?
+    '10',...            % 4 Magnification
+    '2',...             % 5 Binning
+    '100',...           % 6 Overlap
+    '1',...             % 7 Use SheppLogan?
+    '1',...             % 8 Show Sclicing Details?
+    '1',...             % 9 Show the Slices?
+    '0',...             %10 Calculate Cutline?
+    '100',...           %11 Maximal NumProj Quality
+    '20',...            %12 Minimal NumProj Quality
+    '512',...           %13 Simulation Calculation Size
+    '0',...             %14 writeout
+    '100'...            %15 Exposure Time > needed for time estimation
+    };
+%creates the dialog box. the user input is stored into a cell array
+
+%h=helpdlg('Enter either `DetectorWidth` or `AmountOfSubscans` in the next dialog!','Tenshun!');
+%uiwait(h);
+
 answer=inputdlg(prompt,name,numlines,defaultanswer);
 %notice we use {} to extract the data from the cell array
-SampleWidth        = str2num(answer{1});
-CameraWidth        = str2num(answer{2}); %[] or number. define here if you want to have a certain amount of subscans. then we redefine CameraWidth.
+FOV_um             = str2num(answer{1});
+FOV_um             = FOV_um *1000;
+DetectorWidth      = str2num(answer{2}); %[] or number. define here if you want to have a certain amount of subscans. then we redefine DetectorWidth.
 AmountOfSubScans   = str2num(answer{3});
-Overlap_px         = str2num(answer{4});
-useSheppLogan      = str2num(answer{5});
-ShowSlicingDetails = str2num(answer{6});
-ShowSlices         = str2num(answer{7});
-CalculateCutline   = str2num(answer{8});
-InitialQuality     = str2num(answer{9});
-SegmentQuality     = str2num(answer{10});
-ReduceIt           = str2num(answer{11});
-ExposureTime       = str2num(answer{12});
+Magnification      = str2num(answer{4});
+Binning            = str2num(answer{5});
+Overlap            = str2num(answer{6});
+useSheppLogan      = str2num(answer{7});
+ShowSlicingDetails = str2num(answer{8});
+ShowSlices         = str2num(answer{9});
+CalculateCutline   = str2num(answer{10});
+MaximalQuality     = str2num(answer{11});
+MinimalQuality     = str2num(answer{12});
+ModelWidth         = str2num(answer{13});
+writeout           = str2num(answer{14});
+ExposureTime       = str2num(answer{15});
 pause(0.01)
 WorkPath='P:\MATLAB\wfs-sim\';
 %% setup data structure to save the stuff into
 SubScans = [struct('Image',[],'Cutline',[],'CutImage',[],'NumProj',[],'Sinogram',[],'Reconstruction',[])];
-%% calculation
-if AmountOfSubScans >= 1
-    CameraWidth = ceil(( SampleWidth + ((AmountOfSubScans+1)*Overlap_px))/ AmountOfSubScans)
+
+%% calculations
+%% AmountOfSubscans
+
+%% calculate pixelsize and amount of subscans
+% if AmountOfSubscans is given, we're not setting anything, but using the
+% given value
+if isempty(AmountOfSubScans) == 1 % none given
+    ImageSegmentWidth_px = DetectorWidth - Overlap;
+    AmountOfSubScans=ceil( FOV_um / ImageSegmentWidth_px);
+    disp(['We need ' num2str(AmountOfSubScans) ' SubScans to cover the chosen FOV']);
+    if mod(AmountOfSubScans,2) == 0 % AmountOfSubScans given
+        AmountOfSubScans = AmountOfSubScans +1;
+        disp(['Since we need an odd Number of SubScans, were adding one, leading to ' num2str(AmountOfSubScans) ' SubScans'])
+    end
+elseif isempty(AmountOfSubScans) == 0 % AmountOfSubScans is given, we're thus redefining the Detector and the ImageSegmentWidth
+    disp(['We`re using  ' num2str(AmountOfSubScans) ' SubScans, as you wish']);
+    disp('We`re thus rescaling the DetectorWidth & ImageSegmentWidth to suit your settings!')
+    DetectorWidth = ceil(( FOV_um + ((AmountOfSubScans+1)*Overlap))/ AmountOfSubScans);
+    ImageSegmentWidth_px = DetectorWidth - Overlap;
+    disp(['The new DetectorWidth is ' num2str(DetectorWidth) 'px'])
+    disp(['The new ImageSegmentWidth_px is ' num2str(ImageSegmentWidth_px) 'px'])
 end
+
+disp(['We`re having ' num2str(AmountOfSubScans*ImageSegmentWidth_px-FOV_um) 'px too much,'])
+disp(['since we`re covering ' num2str(FOV_um) 'um with ' num2str(AmountOfSubScans) ' SubScans...'])
+
+% binning and pixelsize
+% convert FOV_um into SampleWidth (px) using pixelsize
+pixelsize = 7 / Magnification; % according to the table I've used in the NDS-Masterthesis this is the deal.
+pizelsize = pixelsize * Binning;
+SampleWidth = round( FOV_um / pixelsize );
 
 if useSheppLogan==1
     Image = imnoise(phantom(SampleWidth),'gaussian');
@@ -53,8 +113,7 @@ else
 end
 
 % the function saves the sliced subscans in SubScans.Image
-SubScans = fct_ImageSlicer(Image,CameraWidth,Overlap_px,ShowSlicingDetails);
-AmountOfSubScans = length(SubScans);
+%SubScans = fct_ImageSlicer(Image,AmountOfSubScans,DetectorWidth,Overlap,ShowSlicingDetails);
 
 if ShowSlices == 1 
     figure
@@ -65,36 +124,32 @@ if ShowSlices == 1
         end
 end
 
-InterpolateXthRow = 4;
-whichImage = ceil(AmountOfSubScans/2);
-SubScans(whichImage).Image = fct_InterpolateImage(double(SubScans(whichImage).Image),InterpolateXthRow);
-% figure('name','Interpolated Image')
-%      imshow(SubScans(whichImage).Image,[])
-%      axis on
-
 %% cutline generation
 disp('the cutlines are:')
 for n=1:AmountOfSubScans-1
     % SubScans(n).Image=double(SubScans(n).Image)
     if CalculateCutline == 1
-        SubScans(n).Cutline=fct_cutline(SubScans(n).Image,SubScans(n+1).Image);
+        SubScans(n).Cutline=fct_CutlineCalculator(SubScans(n).Image,SubScans(n+1).Image);
     elseif CalculateCutline == 0
-        SubScans(n).Cutline = Overlap_px;
+        SubScans(n).Cutline = Overlap/2;
     end
     disp(['from image ' num2str(n) ' to ' num2str(n+1) ': ' num2str(SubScans(n).Cutline)])
 end
-     
+
 %% output
-ConcatenatedImage = [];
-MergedImage = [];
-for n=1:AmountOfSubScans-1
-    ConcatenatedImage = [ ConcatenatedImage SubScans(n).Image ];
-    SubScans(n).CutImage = SubScans(n).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
-    MergedImage = [ MergedImage SubScans(n).CutImage ];
-end
-SubScans(AmountOfSubScans).CutImage = SubScans(AmountOfSubScans).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
-ConcatenatedImage = [ ConcatenatedImage SubScans(AmountOfSubScans).Image ];
-MergedImage = [ MergedImage SubScans(AmountOfSubScans).Image ];
+% ConcatenatedImage = [];
+% MergedImage = [];
+% for n=1:AmountOfSubScans-1
+%     ConcatenatedImage = [ ConcatenatedImage SubScans(n).Image ];
+%     SubScans(n).CutImage = SubScans(n).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
+%     MergedImage = [ MergedImage SubScans(n).CutImage ];
+% end
+% SubScans(AmountOfSubScans).CutImage = SubScans(AmountOfSubScans).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
+% ConcatenatedImage = [ ConcatenatedImage SubScans(AmountOfSubScans).Image ];
+% MergedImage = [ MergedImage SubScans(AmountOfSubScans).Image ];
+
+ConcatenatedImage = Image;
+MergedImage = Image;
 
 figure('name','Images')
     subplot(211)
@@ -107,170 +162,139 @@ figure('name','Images')
         axis on
         title('Merged Image')
 
-NumberOfProjections = fct_segmentreducer((SampleWidth-((AmountOfSubScans-1)*Overlap_px)),...
-    SampleWidth,size(SubScans(1).Image,2),AmountOfSubScans,InitialQuality/100,SegmentQuality/100)
+%NumberOfProjections = fct_v3_SegmentGenerator(SampleWidth,AmountOfSubScans,MinimalQuality,MaximalQuality,10)
+NumberOfProjections = fct_segmentreducer(SampleWidth,AmountOfSubScans,MinimalQuality,MaximalQuality)
+ProjectionsSize=size(NumberOfProjections);
 
-%% calculate reduction factor
-ModelWidth=1024;
-factor = ModelWidth / ( (AmountOfSubScans * CameraWidth) - ( (AmountOfSubScans -1) * Overlap_px) );
-ModelOverlap= round(Overlap_px * factor);
-if ModelOverlap < 3
-    newfactor = 3/Overlap_px;
-    ModelWidth=round(SampleWidth/newfactor);
-    factor = ModelWidth / SampleWidth;
-    ModelOverlap = round(Overlap_px * factor);
+%% calculate reduction factor for error-calculation
+ModelReductionFactor = ModelWidth / SampleWidth;
+ModelOverlap= round(Overlap * ModelReductionFactor);
+if ModelOverlap < 5
+    h=helpdlg('The Overlap for the Model would be below 5 pixels, I`m thus redefining the Reduction Factor','Tenshun!');
+    NewReductionFactor = 5/Overlap
+    ModelWidth = round(SampleWidth * NewReductionFactor)
+    ModelReductionFactor = ModelWidth / SampleWidth
+    ModelOverlap = round(Overlap * ModelReductionFactor)
 end
 
-ModelNumberOfProjections = round(NumberOfProjections .* factor);
-ModelPhantom = phantom(round(ModelWidth/sqrt(2)));
-ModelPhantomSize = size(ModelPhantom)
-disp('model sinogram generation')
-ModelSinogram = radon(ModelPhantom,[0:(179/(max(max(ModelNumberOfProjections))-1)):179]);
-ModelSinogramSize = size(ModelSinogram)
-ModelDetectorWidth = round(CameraWidth * factor);
+Image = MergedImage;
 
-ModelSinogramWidth = size(ModelSinogram',2);
-ModelPhantomWidth = size(ModelPhantom,2);
+ModelNumberOfProjections = round(NumberOfProjections .* ModelReductionFactor);
+ModelImage = imresize(Image,ModelReductionFactor);
+ModelDetectorWidth = round(DetectorWidth * ModelReductionFactor);
+theta = 1:180/ModelNumberOfProjections(1):180;
+ModelMaximalSinogram = radon(ModelImage,theta);
+ModelMaximalReconstruction = iradon(ModelMaximalSinogram,theta);
 
-PaddingWidth = ModelSinogramWidth - ModelPhantomWidth;
-disp('model reconstruction calculation')
-ModelPhantom = iradon(ModelSinogram,[0:(179/(max(max(ModelNumberOfProjections))-1)):179],...
-        'linear','Ram-lak',1,max(max(ModelNumberOfProjections)));
-
-% ModelPhantom = [ zeros(floor(PaddingWidth/2),ModelSinogramWidth); ...
-%     [ zeros(size(ModelPhantom,1),floor(PaddingWidth/2)) ModelPhantom zeros(size(ModelPhantom,1),floor(PaddingWidth/2)) ];...
-%     zeros(ceil(PaddingWidth/2),ModelSinogramWidth) ];
-
-AbsError = [];
-AverageError = [];
-TotalScanTime = [];
-FigureNumber = 0;
-ShowFigure = 0;
+% disp('model sinogram generation')
+% ModelSinogram = radon(ModelImage,[0:(179/(max(max(ModelNumberOfProjections))-1)):179]);
+% 
+% disp('model reconstruction calculation')
+% ModelReconstruction = iradon(ModelSinogram,[0:(179/(max(max(ModelNumberOfProjections))-1)):179],...
+%         'linear','Ram-lak',1,max(max(ModelNumberOfProjections)));
+    
+% figure;
+%     imshow(ModelSinogram,[]);
+% figure;
+%     imshow(ModelReconstruction,[]);
 
 for Protocol = 1:size(ModelNumberOfProjections,1)
     disp('---');
-    disp(['Working on Protocol ' num2str(Protocol)]);
-    if ShowFigure == 1;
-        FigureNumber = gcf + Protocol;
-    end
-    [ AbsError(Protocol), AverageError(Protocol) ] = ...
-        fct_ModelCalculation(ModelSinogram,ModelDetectorWidth,ModelOverlap,ModelNumberOfProjections(Protocol,:),ModelPhantom,FigureNumber);
+    disp(['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) ' in total.']);
+    % calculating the error to the original, fullsize protocol
+    % uses ModelSinogram and current NumberOfProjections as input
+    [ AbsoluteError(Protocol), ErrorPerPixel(Protocol) ] = fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction);
     TotalScanTime(Protocol) = sum(NumberOfProjections(Protocol,:)) * ExposureTime / 1000;
 end
 
 %% Normalizing the Error
-AverageError = max(AverageError) - AverageError;
-QualitySize = InitialQuality - SegmentQuality;
-Error = AverageError ./ max(AverageError) .* InitialQuality 
+% AverageError = max(AverageError) - AverageError;
+% QualitySize = InitialQuality - SegmentQuality;
+Error =  ErrorPerPixel ./ max(ErrorPerPixel);
+Error = Error - Error(1); % erster Fehler substrahieren, damit bestes Protokoll Fehler = 0 hat.
+%Error = ( 1 - Error ) .* MaximalQuality;
+[ Dummy,SortIndex] = sort(TotalScanTime);
 
 %% display error
 figure
-    plot(TotalScanTime,AbsError,'--s');
+    plot(TotalScanTime(SortIndex),AbsoluteError(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time [s] @ an Exposure Time of ' num2str(ExposureTime) ' ms per Proj.']);
 	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$ [au]','Interpreter','latex');
     grid on;
 figure
-    plot(TotalScanTime,AverageError,'--s');
+    plot(TotalScanTime(SortIndex),ErrorPerPixel(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time [s] @ an Exposure Time of ' num2str(ExposureTime) ' ms per Proj.']);
 	ylabel('Expected Quality of the Scan [au]');
     grid on;
 figure
-    plot(TotalScanTime,Error,'--s');
+    plot(TotalScanTime(SortIndex),Error(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time [s] @ an Exposure Time of ' num2str(ExposureTime) ' ms per Proj.']);
-	ylabel('Expected Quality of the Scan [%]');
+    ylabel('Expected Quality of the Scan [%]');
     grid on;
-
-% % %% calculate global reduction factor to speed things up a bit
-% TotalProj(length(NumberOfProjections(:,1))) = 0;
-% ConcatenatedReconstructions = [struct('Image',[],'TotalNumProj','0','DiffImage',[],'Error',[])];
-% for Protocol=1:length(NumberOfProjections(:,1))
-%     for n=1:AmountOfSubScans
-% %         SubScans(n).NumProj = NumberOfProjections(Protocol,n);
-%         TotalProj(Protocol) = TotalProj(Protocol) + SubScans(n).NumProj;
-%         ConcatenatedReconstructions(Protocol).TotalNumProj = TotalProj(Protocol);%ConcatenatedReconstructions(Protocol).TotalNumProj + SubScans(n).NumProj;
-% %     end
-% %     if Protocol == 1
-% %         factor = round(ConcatenatedReconstructions(Protocol).TotalNumProj/(SampleWidth/ReduceIt));
-% %     else
-%     end
-% end
-
-% %% radon and iradon
-% for Protocol=1:length(NumberOfProjections(:,1))
-%     sinbar = waitbar(0,'calculating sinograms...');
-% %     figure
-%     for n=1:AmountOfSubScans
-%         SubScans(n).NumProj = NumberOfProjections(Protocol,n)/factor;
-%         SubScans(n).Sinogram = radon(SubScans(n).CutImage,1:(180/(SubScans(n).NumProj)):180);
-% %         subplot(AmountOfSubScans,1,n)
-% %             imshow(SubScans(n).Sinogram',[])
-% %             title(['Sinogram Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
-% %             axis on
-% %         pause(0.01)
-%         waitbar(n/AmountOfSubScans)
-%     end
-%     close(sinbar)
-% 
-%     recbar = waitbar(0,'calculating reconstructions...');
-%     ConcatenatedReconstructions(Protocol).Image = [];
-% %     figure
-%     for n=1:AmountOfSubScans
-%         SubScans(n).Reconstruction = iradon(SubScans(n).Sinogram,1:(180/(SubScans(n).NumProj)):180,...
-%             'linear','Ram-lak',1,CameraWidth-Overlap_px);
-%         ConcatenatedReconstructions(Protocol).Image = [ ConcatenatedReconstructions(Protocol).Image SubScans(n).Reconstruction ];
-% %         subplot(2,AmountOfSubScans,n)
-% %             imshow(SubScans(n).Reconstruction,[])
-% %             title(['Reconstruction Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
-% %             axis on
-% %         pause(0.01)
-%          waitbar(n/AmountOfSubScans)
-%     end
-% %         subplot(2,AmountOfSubScans,[(AmountOfSubScans+1) (2*AmountOfSubScans)])
-% %             imshow(ConcatenatedReconstruction,[])
-% %             title('Concatenated Reconstructions')
-% %             axis on
-%     close(recbar)
+    
+%% choose which protocol
+% h=helpdlg('Choose 1 square from the quality-plot (quality vs. total scan-time!). One square corresponds to one possible protocol. Take a good look at the time on the left and the quality on the bottom. I`ll then calculate the protocol that best fits your choice','Protocol Selection'); 
+% uiwait(h);
+% [userx,usery] = ginput(1);
+% [mindiff minidx ] = min(abs(Error - usery));
+% NumberOfProjections = flipud(NumberOfProjections);
+% UserNumProj = NumberOfProjections(minidx,:);
+% NumberOfProjections = flipud(NumberOfProjections);    
 %     
-%     figure('Position',[100 100 1536 800],'name',['All Images for Protocol ' num2str(Protocol)])
-%     for n=1:AmountOfSubScans
-%         subplot(AmountOfSubScans+2,2,2*n-1)
-%             imshow(SubScans(n).Sinogram',[])
-%             title(['Sinogram Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
-%             axis on
-%         subplot(AmountOfSubScans+2,2,2*n)
-%             imshow(SubScans(n).Reconstruction,[])
-%             title(['Reconstruction Nr. ' num2str(n) ' - Protocol Nr. ' num2str(Protocol) ])
-%             axis on
-%         subplot(AmountOfSubScans+2,2,[(2*AmountOfSubScans)+1 (2*AmountOfSubScans)+4])
-%             imshow(ConcatenatedReconstructions(Protocol).Image,[])
-%             title(['Concatenated Reconstructions - Protocol Nr. ' num2str(Protocol)])
-%             axis on
-%     end    
+% if writeout == 1
+%     %% choose the path
+%     h=helpdlg('Now please choose a path where I should write the output-file'); 
+%     close;
+%     uiwait(h);
+%     %UserPath = uigetdir;
+%     %pause(0.5);
+%     disp('USING HARDCODED UserPATH SINCE X-SERVER DOESNT OPEN uigetdir!!!');
+%     UserPath = '/sls/X02DA/Data10/e11126/2008b'
+%     %% input samplename
+%     UserSampleName = input('Now please input a SampleName: ', 's');
 % end
 % 
-% %% calculate pixelwise Error
-%  figure('Position',[100 100 1536 800],'name',['Diff(Protocol1-Protocol)-Image for all ' num2str(Protocol) ' Protocols'])
-% for Protocol=1:length(NumberOfProjections(:,1))
-%     ConcatenatedReconstructions(Protocol).DiffImage = ( ConcatenatedReconstructions(1).Image - ConcatenatedReconstructions(Protocol).Image);
-%     ConcatenatedReconstructions(Protocol).Error = sum( sum( ConcatenatedReconstructions(Protocol).DiffImage .^2 ) );% / size(ConcatenatedReconstructions(Protocol).Image,1) / size(ConcatenatedReconstructions(Protocol).Image,2);
-% %    figure
-%     subplot(ceil(length(NumberOfProjections(:,1))/2),2,Protocol)
-%         imshow(ConcatenatedReconstructions(Protocol).DiffImage,[])
-%         title(['Protocol: ' num2str(Protocol) ' - Error: ' num2str(round(ConcatenatedReconstructions(Protocol).Error))])
+% %% output the NumProj the user wants into Matrix
+% ScanWhichTheUserWants = UserNumProj;
+% h=helpdlg(['I`ve chosen protocol ' num2str(minidx) ' corresponding to ' num2str(size(NumberOfProjections,2)) ...
+%     ' scans with NumProj like this: ' num2str(ScanWhichTheUserWants) ' as a best match to your selection.']);
+% uiwait(h);
+% % write NumProj to first column of output
+% OutputMatrix(:,1)=ceil(ScanWhichTheUserWants);
+% 
+% %% calculate InbeamPosition
+% ImageSegmentWidth_um = ImageSegmentWidth_px * pixelsize;
+% UserInbeamPosition=ones(size(ScanWhichTheUserWants,2),1);
+% for position = 1:length(UserInbeamPosition)
+%     UserInbeamPosition(position) = ImageSegmentWidth_um * position - (ceil(length(UserInbeamPosition)/2)*ImageSegmentWidth_um);
 % end
-
-% %% display error
-% figure
-%     semilogy([ConcatenatedReconstructions.TotalNumProj],[ConcatenatedReconstructions.Error]);
-%     xlabel('Total Amount of simulated Projections');
-% 	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$','Interpreter','latex');
-%     grid on;
-% figure
-%     plot([ConcatenatedReconstructions.TotalNumProj],[ConcatenatedReconstructions.Error]);
-%     xlabel('Total Amount of simulated Projections');
-% 	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$','Interpreter','latex');
-%     grid on;
-
+% % write InbeamPositions to second column of output
+% OutputMatrix(:,2)=UserInbeamPosition;
+% 
+% %% set angles
+% RotationStartAngle = 45;
+% RotationStopAngle  = 225;
+% % write angles to second column of output
+% OutputMatrix(:,3)=RotationStartAngle;
+% OutputMatrix(:,4)=RotationStopAngle;
+% 
+% if writeout == 1
+%     %% write Header to textfile
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Path = ' UserPath],'delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# SampleName = ' UserSampleName],'-append','delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# FOV = ' num2str(FOV_um) 'um'],'-append','delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# DetectorWidth = ' num2str(DetectorWidth_px) 'px'],'-append','delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Magnification = ' num2str(Magnification) 'x'],'-append','delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Binning = ' num2str(Binning) ' x ' num2str(Binning)],'-append','delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Overlap = ' num2str(Overlap_px) ' px'],'-append','delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], '#---','-append','delimiter','');
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
+%     % dlmwrite([UserPath '/' UserSampleName '.txt' ], '#---','-append','delimiter','');
+% 
+%     %% write final output matrix to text file
+%     dlmwrite([UserPath '/' UserSampleName '.txt' ], OutputMatrix,  '-append', 'roffset', 1, 'delimiter', ' ');
+% end    
+    
 %% finish
 disp('I`m done with all you`ve asked for...')
 disp(['It`s now ' datestr(now) ]);
