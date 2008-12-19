@@ -30,10 +30,10 @@ Defaults={...
     '1',...     % 2
     '10',...    % 3
     '150',...   % 4
-    '10',...    % 5
+    '40',...    % 5
     '100',...   % 6
     '10',...    % 7
-    '256',...   % 8
+    '512',...   % 8
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -84,7 +84,6 @@ figure
     set(gca,'XTick',[1:AmountOfProtocols])
     set(gca,'XTickLabel',SortIndex)
 
-
 %% Simulating these Protocols to give the end-user a possibility to choose
 % Use SimulationSize input at the beginning to reduce the calculations to
 % this size, or else it just takes too long...
@@ -107,6 +106,7 @@ disp(['The actual FOV is ' num2str(ActualFOV_px) ' pixels, the set ModelSize is 
 ModelNumberOfProjections = round(NumberOfProjections .* ModelReductionFactor);
 disp('Generating ModelPhantom...');
 ModelImage = imnoise(phantom( round( ActualFOV_px*ModelReductionFactor ) ),'gaussian',0,0.001);
+%ModelImage = phantom( round( ActualFOV_px*ModelReductionFactor ) );
 ModelDetectorWidth = round( DetectorWidth_px * ModelReductionFactor );
 theta = 1:180/ModelNumberOfProjections(1):180;
 disp('Calculating ModelSinogram...');
@@ -123,15 +123,11 @@ for Protocol = 1:size(ModelNumberOfProjections,1)
 end
 
 %% Normalizing the Error
-
-
-
-Error =  ErrorPerPixel ./ max(ErrorPerPixel);
-Error = Error - Error(1);
+Error = max(ErrorPerPixel) - ErrorPerPixel;
 
 %% display error
 figure
-    plot(TotalSubScans(SortIndex),AbsoluteError(SortIndex),'--s');
+    plot(TotalSubScans(SortIndex)',AbsoluteError(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
 	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$ [au]','Interpreter','latex');
     grid on;
@@ -140,7 +136,7 @@ figure
     xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
 	ylabel('Expected Quality of the Scan [au]');
     grid on;
-figure
+% figure
     plot(TotalSubScans(SortIndex),Error(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
     ylabel('Expected Quality of the Scan [%]');
