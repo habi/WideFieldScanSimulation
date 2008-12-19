@@ -154,5 +154,6 @@ function NumberOfProjections = fct_v3_SegmentGenerator(SampleWidth_px,AmountOfSu
 	% hack to take away the zero NumProj in the first row (coming from the
 	% deletion of the NumProj smaller than LeastQuality).
 	NumberOfProjections = flipud(NumberOfProjections(2:end,:));
+    disp(['With your settings, we have ' num2str(size(NumberOfProjections,1)) ' different Scanning Protocols.']);
     disp('-----');
 end

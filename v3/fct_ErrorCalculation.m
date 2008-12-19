@@ -18,7 +18,7 @@ function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfPr
     SubScanWidth = floor( SinogramWidth / AmountOfSubScans );
     
     for SubScan=1:AmountOfSubScans
-        disp(['interpolating SubScan ' num2str(SubScan) ' with ' num2str(NumberOfProjections(SubScan)) ' Projections' ]);
+        disp(['SubScan ' num2str(SubScan) ' is calculated with ' num2str(NumberOfProjections(SubScan)) ' Projections.' ]);
         Region = CurrentStartPosition:CurrentStartPosition+SubScanWidth-1;
         InterpolatedSinogram(Region,:) = fct_InterpolateImage( Sinogram(Region,:),round( NumberOfProjections(1) / NumberOfProjections(SubScan)),1);
         CurrentStartPosition = CurrentStartPosition + SubScanWidth;

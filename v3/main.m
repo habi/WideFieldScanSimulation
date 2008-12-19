@@ -17,7 +17,7 @@ InputDialog={...
     'Minimal Quality [%]',...   % 5
     'Maximal Quality [%]',...   % 6
     'Quality Stepwitdh [%]',... % 7
-    'SimulationSize [px]',...   % 8
+    'SimulationSize [px] (256/512 is a sensible choice...)',...   % 8
     };
 
 % Setup of the Dialog Box
@@ -26,14 +26,14 @@ NumLines=1; % Number of Lines for the Boxes
 
 % The default Answers are...
 Defaults={...
-    '3.0',...   % 1
+    '4.0',...   % 1
     '1',...     % 2
     '10',...    % 3
-    '100',...   % 4
+    '150',...   % 4
     '10',...    % 5
     '100',...   % 6
     '10',...    % 7
-    '128',...   % 8
+    '256',...   % 8
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -71,6 +71,20 @@ disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and 
 %% Generate 'Table' with Number of Projections
 NumberOfProjections = fct_SegmentGenerator(ActualFOV_px,AmountOfSubScans,MinimalQuality,MaximalQuality,QualityStepWidth);
 
+AmountOfProtocols=size(NumberOfProjections,1);
+
+TotalSubScans = sum(NumberOfProjections,2);
+[dummy SortIndex] = sort(TotalSubScans);
+
+% plot this table
+figure
+    plot(TotalSubScans(SortIndex),'-o');
+    xlabel('Protocol')
+    ylabel('Total NumProj')
+    set(gca,'XTick',[1:AmountOfProtocols])
+    set(gca,'XTickLabel',SortIndex)
+
+
 %% Simulating these Protocols to give the end-user a possibility to choose
 % Use SimulationSize input at the beginning to reduce the calculations to
 % this size, or else it just takes too long...
@@ -92,7 +106,7 @@ disp(['The actual FOV is ' num2str(ActualFOV_px) ' pixels, the set ModelSize is 
 
 ModelNumberOfProjections = round(NumberOfProjections .* ModelReductionFactor);
 disp('Generating ModelPhantom...');
-ModelImage = phantom( round( ActualFOV_px*ModelReductionFactor ) );
+ModelImage = imnoise(phantom( round( ActualFOV_px*ModelReductionFactor ) ),'gaussian',0,0.001);
 ModelDetectorWidth = round( DetectorWidth_px * ModelReductionFactor );
 theta = 1:180/ModelNumberOfProjections(1):180;
 disp('Calculating ModelSinogram...');
@@ -102,36 +116,43 @@ ModelMaximalReconstruction = iradon(ModelMaximalSinogram,theta);
 
 for Protocol = 1:size(ModelNumberOfProjections,1)
     disp('---');
-    disp(['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) ' in total.']);
+    disp(['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) '.']);
     % calculating the error to the original, fullsize protocol
     % uses ModelSinogram and current NumberOfProjections as input
     [ AbsoluteError(Protocol), ErrorPerPixel(Protocol) ] = fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction);
-    TotalScanTime(Protocol) = sum(NumberOfProjections(Protocol,:));
 end
 
 %% Normalizing the Error
-% AverageError = max(AverageError) - AverageError;
-% QualitySize = InitialQuality - SegmentQuality;
+
+
+
 Error =  ErrorPerPixel ./ max(ErrorPerPixel);
 Error = Error - Error(1);
-[ Dummy,SortIndex] = sort(TotalScanTime);
 
 %% display error
 figure
-    plot(TotalScanTime(SortIndex),AbsoluteError(SortIndex),'--s');
+    plot(TotalSubScans(SortIndex),AbsoluteError(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
 	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$ [au]','Interpreter','latex');
     grid on;
 figure
-    plot(TotalScanTime(SortIndex),ErrorPerPixel(SortIndex),'--s');
+    plot(TotalSubScans(SortIndex),ErrorPerPixel(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
 	ylabel('Expected Quality of the Scan [au]');
     grid on;
 figure
-    plot(TotalScanTime(SortIndex),Error(SortIndex),'--s');
+    plot(TotalSubScans(SortIndex),Error(SortIndex),'--s');
     xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
     ylabel('Expected Quality of the Scan [%]');
     grid on;
+    
+%% Let the user choose a protocol
+h=helpdlg('Choose 1 square from the quality-plot (quality vs. total scan-time!). One square corresponds to one possible protocol. Take a good look at the time on the left and the quality on the bottom. I`ll then calculate the protocol that best fits your choice','Protocol Selection'); 
+uiwait(h);
+[ userx, usery ] = ginput(1);
+[ mindiff minidx ] = min(abs(TotalSubScans(SortIndex) - userx));
+SortedNumProj = NumberOfProjections(SortIndex,:);
+User_NumProj = SortedNumProj(minidx,:)
 
 %% finish
 disp('-----');
