@@ -37,8 +37,8 @@ function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfPr
     % size(MaximalReconstruction);
     % size(InterPolatedReconstruction);
          
-    %DifferenceImage = imsubtract(MaximalReconstruction,InterPolatedReconstruction);
-    DifferenceImage = imabsdiff(MaximalReconstruction,InterPolatedReconstruction);
+    DifferenceImage = imsubtract(MaximalReconstruction,InterPolatedReconstruction);
+    %DifferenceImage = imabsdiff(MaximalReconstruction,InterPolatedReconstruction);
 
     AbsoluteError = sum( sum( DifferenceImage ));
     ErrorPerPixel = AbsoluteError / ( size(Image,1)^2);

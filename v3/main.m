@@ -3,6 +3,9 @@
 %% 2008-12-18: starting completely fresh, now that the segment reducer
 %% works fine.
 %% 2008-12-19: cleanup and documentation.
+%% 2008-12-22: redid the error-plotting, calculation is switched to
+%% imabsdiff
+%% 2008-12-23: inserted exposuretime and implemented writeout.
 
 warning off Images:initSize:adjustingMag % suppress the warning about big images
 clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
@@ -14,11 +17,13 @@ InputDialog={...
     'Binning',...               % 2
     'Magnification',...         % 3
     'Overlap [px]',...          % 4
-    'Minimal Quality [%]',...   % 5
-    'Maximal Quality [%]',...   % 6
-    'Quality Stepwitdh [%]',... % 7
-    'SimulationSize [px] (256/512 is a sensible choice...)',...     % 8
-    'Write a file with the final details to disk? (1=y,0=n)',...    % 9
+    'Exposure Time [ms]',...    % 5
+    'Minimal Quality [%]',...   % 6
+    'Maximal Quality [%]',...   % 7
+    'Quality Stepwitdh [%]',... % 8
+    'SimulationSize [px] (512 or 1024 is a sensible choice...)',... % 9
+    'Write a file with the final details to disk? (1=y,0=n)',...    % 10
+    'Sample Name (leave it empty and I`ll ask you later on...)',... % 11
     };
 
 % Setup of the Dialog Box
@@ -30,27 +35,31 @@ Defaults={...
     '4.0',...   % 1
     '1',...     % 2
     '10',...    % 3
-    '150',...   % 4
-    '10',...    % 5
-    '100',...   % 6
-    '10',...    % 7
-    '256',...   % 8
-    '1',...     % 9
+    '100',...   % 4
+    '125',...   % 5
+    '60',...    % 6
+    '100',...   % 7
+    '10',...    % 8
+    '512',...   % 9
+    '1',...     % 10
+    'R108test1',... % 11
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
 UserInput=inputdlg(InputDialog,Name,NumLines,Defaults);
  
 % Extract the answers from the array
-FOV_mm            = str2num(UserInput{1}); % This is the FOV the user wants to achieve
-Binning           = str2num(UserInput{2}); % since the Camera is 2048px wide, the binning influences the DetectorWidth
-Magnification     = str2num(UserInput{3}); % Magn. and Binning influence the pixelsize
-Overlap_px        = str2num(UserInput{4}); % Overlap between the SubScans, needed for merging
-MinimalQuality    = str2num(UserInput{5}); % minimal Quality for Simulation
-MaximalQuality    = str2num(UserInput{6}); % maximal Quality for Simulation     
-QualityStepWidth  = str2num(UserInput{7}); % Quality StepWidth, generalls 10%
-SimulationSize_px = str2num(UserInput{8}); % DownSizing Factor for Simulation > for Speedup
-writeout          = str2num(UserInput{9}); % Do we write a PreferenceFile to disk at the end?
+FOV_mm            = str2num(UserInput{1});  % This is the FOV the user wants to achieve
+Binning           = str2num(UserInput{2});  % since the Camera is 2048px wide, the binning influences the DetectorWidth
+Magnification     = str2num(UserInput{3});  % Magn. and Binning influence the pixelsize
+Overlap_px        = str2num(UserInput{4});  % Overlap between the SubScans, needed for merging
+ExposureTime      = str2num(UserInput{5});  % Exposure Time, needed for Total Scan Time estimation
+MinimalQuality    = str2num(UserInput{6});  % minimal Quality for Simulation
+MaximalQuality    = str2num(UserInput{7});  % maximal Quality for Simulation     
+QualityStepWidth  = str2num(UserInput{8});  % Quality StepWidth, generalls 10%
+SimulationSize_px = str2num(UserInput{9});  % DownSizing Factor for Simulation > for Speedup
+writeout          = str2num(UserInput{10}); % Do we write a PreferenceFile to disk at the end?
+UserSampleName    = UserInput{11};          % SampleName For OutputFile, now without str2num, since it's already a string...
 
 %% Calculations needed for progress
 pixelsize = 7.4 / Magnification * Binning; % makes Pixel Size [um] equal to second table on TOMCAT website (http://is.gd/citz)
@@ -94,9 +103,10 @@ ModelReductionFactor = SimulationSize_px / ActualFOV_px;
 ModelOverlap_px= round( Overlap_px * ModelReductionFactor );
 if ModelOverlap_px < 5 % Overlap needs to be above 5 pixels to reliably calculate the merging.
     CorrectedReductionFactor = 5 / Overlap_px ;
-    h=helpdlg(['The Overlap for your chosen Model Size would be below 5 pixels, '...
-        'I`m thus redefining the Reduction Factor from ' num2str(ModelReductionFactor) ...
-        ' to ' num2str(CorrectedReductionFactor)],'Tenshun!');
+    h=helpdlg(['The Overlap for your chosen Model Size is ' num2str(ModelOverlap_px) ...
+        ' px (=below 5 px). I`m thus redefining the Reduction Factor from ' ...
+        num2str(round(ModelReductionFactor*1000)/1000) ' to ' num2str(CorrectedReductionFactor)],... %*1000/1000 is used to display 3 digits...
+        'Tenshun!');
     SimulationSize_px = round( SimulationSize_px * CorrectedReductionFactor / ModelReductionFactor );
     ModelReductionFactor = CorrectedReductionFactor;
     ModelOverlap_px = round(Overlap_px * ModelReductionFactor);
@@ -127,50 +137,52 @@ end
 
 %% Normalizing the Error
 [ dummy ErrorSortIndex ] = sort(AbsoluteError);
-Error = max(ErrorPerPixel) - ErrorPerPixel(ErrorSortIndex);
-
+QualityMeasure = max(ErrorPerPixel) - ErrorPerPixel(SortIndex);
+QualityMeasure = QualityMeasure ./ max(QualityMeasure) * ( MaximalQuality - MinimalQuality) + MinimalQuality;
 %% display error
 figure
-    plot(TotalProjectionsPerProtocol(SortIndex)',AbsoluteError(SortIndex),'--s');
-    xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
-	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$ [au]','Interpreter','latex');
+    plot(TotalProjectionsPerProtocol(SortIndex)',AbsoluteError(SortIndex),'--o');
+    xlabel(['Total Number Of Projections per Protocol']);
+	ylabel('$$\sum\sum$$(imabsdiff(Phantom-Reconstruction)) [au]','Interpreter','latex');
     grid on;
     title('Absolute Error, sorted with Total Number of Projections');
 figure
-    plot(TotalProjectionsPerProtocol(SortIndex),ErrorPerPixel(SortIndex),'--s');
-    xlabel(['Estimated Total Scan Time scaled with Number Of Projections']);
+    plot(TotalProjectionsPerProtocol(SortIndex),ErrorPerPixel(SortIndex),'--o');
+    xlabel(['Total Number Of Projections per Protocol']);
 	ylabel('Expected Quality of the Scan [au]');
     grid on;
     title('Error per Pixel, sorted with Total Number of Projections');
 figure
-    plot(TotalProjectionsPerProtocol(SortIndex),Error(ErrorSortIndex),'--s');
-    xlabel(['Estimated Total Scan Time [Total Number Of Projections]']);
+    ScanningTime = TotalProjectionsPerProtocol(SortIndex) * ExposureTime / 1000 / 60;
+    plot(ScanningTime,QualityMeasure,'--o');
+    xlabel(['estimated Scanning Time [min]']);
+    ylim([0 100]) 
     ylabel('Expected Quality of the Scan [%]');
     grid on;
-    title('max(ErrorPerPixel) - ErrorPerPixel, sorted with Total Number of Projections');
+    title('QualityMeasure plotted vs. sorted Total Number of Projections');
     
 %% Let the user choose a protocol
-h=helpdlg('Choose 1 square from the quality-plot (quality vs. total scan-time!). One square corresponds to one possible protocol. Take a good look at the time on the left and the quality on the bottom. I`ll then calculate the protocol that best fits your choice','Protocol Selection'); 
+h=helpdlg('Choose 1 circle from the plot (quality vs. total scan-time!). One square corresponds to one possible protocol. Take a good look at the time on the left and the quality on the bottom. I`ll then calculate the protocol that best fits your choice','Protocol Selection'); 
 uiwait(h);
 [ userx, usery ] = ginput(1);
-[ mindiff minidx ] = min(abs(TotalProjectionsPerProtocol(SortIndex) - userx));
+[ mindiff minidx ] = min(abs(ScanningTime - userx));
 SortedNumProj = NumberOfProjections(SortIndex,:);
-UserNumProj = SortedNumProj(minidx,:)
+UserNumProj = SortedNumProj(minidx,:);
 
 %% write the UserNumProj to disk, so we can use it with
 %% widefieldscan_final.py
 if writeout == 1
     % choose the path
     h=helpdlg('Now please choose a path where I should write the output-file'); 
-    close;
     uiwait(h);
     UserPath = uigetdir;
     pause(0.01);
     % disp('USING HARDCODED UserPATH SINCE X-SERVER DOESNT OPEN uigetdir!!!');
     % UserPath = '/sls/X02DA/Data10/e11126/2008b'
     % input samplename
-    UserSampleName = input('Now please input a SampleName: ', 's');
-
+    if isempty(UserSampleName)
+        UserSampleName = input('Now please input a SampleName: ', 's');
+    end
     h=helpdlg(['I`ve chosen protocol ' num2str(minidx) ' corresponding to ' ...
         num2str(size(NumberOfProjections,2)) ' scans with NumProj like this: ' ...
         num2str(UserNumProj) ' as a best match to your selection.']);
