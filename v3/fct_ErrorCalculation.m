@@ -7,7 +7,7 @@ function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfPr
 %         return
 %     end
     
-    theta = 1:180/NumberOfProjections(1):180;
+    theta = 1:179/NumberOfProjections(1):180;
     
     Sinogram = radon(Image,theta);
     
@@ -43,8 +43,10 @@ function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfPr
     %figure;
 %         subplot(212)
             imshow(InterPolatedReconstruction,[])
-  
-    DifferenceImage = MaximalReconstruction-InterPolatedReconstruction;
+            
+    %DifferenceImage = MaximalReconstruction - InterPolatedReconstruction;
+    DifferenceImage = imabsdiff(MaximalReconstruction,InterPolatedReconstruction);
+    figure;imshow(DifferenceImage,[]);
     AbsoluteError = sum( sum( DifferenceImage .^2));
     ErrorPerPixel = AbsoluteError / ( size(Image,1)^2);%SinogramHeight ^2 );
 end
