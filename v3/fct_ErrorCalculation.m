@@ -40,8 +40,8 @@ function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfPr
     %DifferenceImage = imsubtract(MaximalReconstruction,InterPolatedReconstruction);
     DifferenceImage = imabsdiff(MaximalReconstruction,InterPolatedReconstruction);
 
-    AbsoluteError = sum( sum( DifferenceImage .^2));
-    ErrorPerPixel = AbsoluteError / ( size(Image,1)^2);%SinogramHeight ^2 );
+    AbsoluteError = sum( sum( DifferenceImage ));
+    ErrorPerPixel = AbsoluteError / ( size(Image,1)^2);
     
 %     figure;
 %         subplot(211)

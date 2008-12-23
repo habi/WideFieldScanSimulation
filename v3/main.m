@@ -17,7 +17,8 @@ InputDialog={...
     'Minimal Quality [%]',...   % 5
     'Maximal Quality [%]',...   % 6
     'Quality Stepwitdh [%]',... % 7
-    'SimulationSize [px] (256/512 is a sensible choice...)',...   % 8
+    'SimulationSize [px] (256/512 is a sensible choice...)',...     % 8
+    'Write a file with the final details to disk? (1=y,0=n)',...    % 9
     };
 
 % Setup of the Dialog Box
@@ -34,6 +35,7 @@ Defaults={...
     '100',...   % 6
     '10',...    % 7
     '256',...   % 8
+    '1',...     % 9
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -48,6 +50,7 @@ MinimalQuality    = str2num(UserInput{5}); % minimal Quality for Simulation
 MaximalQuality    = str2num(UserInput{6}); % maximal Quality for Simulation     
 QualityStepWidth  = str2num(UserInput{7}); % Quality StepWidth, generalls 10%
 SimulationSize_px = str2num(UserInput{8}); % DownSizing Factor for Simulation > for Speedup
+writeout          = str2num(UserInput{9}); % Do we write a PreferenceFile to disk at the end?
 
 %% Calculations needed for progress
 pixelsize = 7.4 / Magnification * Binning; % makes Pixel Size [um] equal to second table on TOMCAT website (http://is.gd/citz)
@@ -91,7 +94,7 @@ ModelReductionFactor = SimulationSize_px / ActualFOV_px;
 ModelOverlap_px= round( Overlap_px * ModelReductionFactor );
 if ModelOverlap_px < 5 % Overlap needs to be above 5 pixels to reliably calculate the merging.
     CorrectedReductionFactor = 5 / Overlap_px ;
-    h=helpdlg(['The Overlap for your chose Model Size would be below 5 pixels, '...
+    h=helpdlg(['The Overlap for your chosen Model Size would be below 5 pixels, '...
         'I`m thus redefining the Reduction Factor from ' num2str(ModelReductionFactor) ...
         ' to ' num2str(CorrectedReductionFactor)],'Tenshun!');
     SimulationSize_px = round( SimulationSize_px * CorrectedReductionFactor / ModelReductionFactor );
@@ -124,7 +127,7 @@ end
 
 %% Normalizing the Error
 [ dummy ErrorSortIndex ] = sort(AbsoluteError);
-Error = max(ErrorPerPixel) - ErrorPerPixel;
+Error = max(ErrorPerPixel) - ErrorPerPixel(ErrorSortIndex);
 
 %% display error
 figure
@@ -140,7 +143,7 @@ figure
     grid on;
     title('Error per Pixel, sorted with Total Number of Projections');
 figure
-    plot(TotalProjectionsPerProtocol(SortIndex),Error(SortIndex),'--s');
+    plot(TotalProjectionsPerProtocol(SortIndex),Error(ErrorSortIndex),'--s');
     xlabel(['Estimated Total Scan Time [Total Number Of Projections]']);
     ylabel('Expected Quality of the Scan [%]');
     grid on;
@@ -152,7 +155,64 @@ uiwait(h);
 [ userx, usery ] = ginput(1);
 [ mindiff minidx ] = min(abs(TotalProjectionsPerProtocol(SortIndex) - userx));
 SortedNumProj = NumberOfProjections(SortIndex,:);
-User_NumProj = SortedNumProj(minidx,:)
+UserNumProj = SortedNumProj(minidx,:)
+
+%% write the UserNumProj to disk, so we can use it with
+%% widefieldscan_final.py
+if writeout == 1
+    % choose the path
+    h=helpdlg('Now please choose a path where I should write the output-file'); 
+    close;
+    uiwait(h);
+    UserPath = uigetdir;
+    pause(0.01);
+    % disp('USING HARDCODED UserPATH SINCE X-SERVER DOESNT OPEN uigetdir!!!');
+    % UserPath = '/sls/X02DA/Data10/e11126/2008b'
+    % input samplename
+    UserSampleName = input('Now please input a SampleName: ', 's');
+
+    h=helpdlg(['I`ve chosen protocol ' num2str(minidx) ' corresponding to ' ...
+        num2str(size(NumberOfProjections,2)) ' scans with NumProj like this: ' ...
+        num2str(UserNumProj) ' as a best match to your selection.']);
+    uiwait(h);
+
+    % calculate InbeamPosition
+    SegmentWidth_um = SegmentWidth_px * pixelsize;
+    UserInbeamPosition=ones(AmountOfSubScans,1);
+    for position = 1:length(UserInbeamPosition)
+        UserInbeamPosition(position) = SegmentWidth_um * position - ( ceil ( length(UserInbeamPosition)/2) * SegmentWidth_um);
+    end
+    % set angles
+    RotationStartAngle = 45;
+    RotationStopAngle  = 225;
+
+    % NumProj to first column of output
+    OutputMatrix(:,1)=UserNumProj;
+    % InbeamPositions to second column of output
+    OutputMatrix(:,2)=UserInbeamPosition;
+    % Start and Stop Angles to third and fourth column of output
+    OutputMatrix(:,3)=RotationStartAngle;
+    OutputMatrix(:,4)=RotationStopAngle;
+
+    % write Header to textfile 'file'
+    % 'filesep' makes sure we're using the correct directory separator
+    % depending on the platform
+    filename = [UserPath filesep UserSampleName '.txt' ];
+    dlmwrite(filename, ['# Path = ' UserPath],'delimiter','');
+    dlmwrite(filename, ['# SampleName = ' UserSampleName],'-append','delimiter','');
+    dlmwrite(filename, ['# chosen FOV = ' num2str(FOV_mm) ' mm'],'-append','delimiter','');
+    dlmwrite(filename, ['# chosen FOV = ' num2str(FOV_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, ['# actual FOV = ' num2str(ActualFOV_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, ['# DetectorWidth = ' num2str(DetectorWidth_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, ['# Magnification = ' num2str(Magnification) 'x'],'-append','delimiter','');
+    dlmwrite(filename, ['# Binning = ' num2str(Binning) ' x ' num2str(Binning)],'-append','delimiter','');
+    dlmwrite(filename, ['# Overlap = ' num2str(Overlap_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, '#---','-append','delimiter','');
+    dlmwrite(filename, '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
+    dlmwrite(filename, '#---','-append','delimiter','');
+    % write SubScanDetails to text file
+    dlmwrite(filename, OutputMatrix,  '-append', 'roffset', 1, 'delimiter', ' ');
+end  
 
 %% finish
 disp('-----');
