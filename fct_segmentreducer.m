@@ -1,22 +1,19 @@
 function NumberOfProjections = fct_segmentreducer(SampleWidth,AmountOfSubScans,MinimalQuality,MaximalQuality)
     % setup
-    if AmountOfSubScans > 3
-        disp('AmountOfSubScans has to be smaller than 3!');
-        NumberOfProjections = [];
-        return;
-    end
+    disp('assuming that N pixels wide -> N Proj.!');
     NumberOfProjections=[];
     TMPNumberOfProjections=[];
     MinQ = MinimalQuality/100;  %Lowest Simulated Quality
     MaxQ = MaximalQuality/100;  % Highest Simulated Quality
-    LeastQ = .3;                % Cutoff Quality > lower generally doesn't make any sense, except the user says it
-    PercentageSteps = 0.1;      % Quality-stepping step width
+    LeastQ = .3;               % Cutoff Quality > lower generally doesn't make any sense, except the user says it
+    PercentageSteps = 0.05;     % Quality-stepping step width
     if LeastQ >= MinQ
-        disp(['since you`ve set the minimal quality lower than ' num2str(LeastQ) ', i`ve redefined LeastQ to ' num2str(MinQ) ])
-        LeastQ = MinQ;
+        LeastQ = MinQ
+        disp(['since you`ve set the minimal quality lower than 0.25, i`ve redefined LeastQ to ' num2str(LeastQ) ])
     end
     % calculate necessary stuff
-    disp(['Amount of Subscans = ' num2str(AmountOfSubScans)])
+    SegmentWidth = round (SampleWidth / AmountOfSubScans);
+    disp(['SegmentWidth = ' num2str(SegmentWidth) ', Amount of Subscans = ' num2str(AmountOfSubScans)])
     ProtocolCounter = 1;
     CenterScanNumber = ceil( AmountOfSubScans / 2 );
     Qualitysteps = MinQ:PercentageSteps:MaxQ;
@@ -24,14 +21,13 @@ function NumberOfProjections = fct_segmentreducer(SampleWidth,AmountOfSubScans,M
         disp([ num2str(n) '. Quality-Step: ' num2str(100*Qualitysteps(n)) '%' ]);
     end
     for CurrentQuality = Qualitysteps;
-        for n=1:AmountOfSubScans %  go from first to central ring-scan
-            %NumberOfProjections(ProtocolCounter,n)=round(pi/2*SampleWidth*CurrentQuality);
-            NumberOfProjections(ProtocolCounter,n)=round(SampleWidth*CurrentQuality);
+        for n=1:CenterScanNumber %  go from first to central ring-scan
+            NumberOfProjections(ProtocolCounter,n)=SampleWidth*CurrentQuality;
         end
-        %fill second half with first half
-        % for n=CenterScanNumber+1:AmountOfSubScans %  go from central ring-scan to the end
-            % NumberOfProjections(ProtocolCounter,n) = NumberOfProjections(ProtocolCounter,n-CenterScanNumber);
-        % end
+        % fill second half with first half
+        for n=CenterScanNumber+1:AmountOfSubScans %  go from central ring-scan to the end
+            NumberOfProjections(ProtocolCounter,n) = NumberOfProjections(ProtocolCounter,n-CenterScanNumber);
+        end
         %pause(1);
         ProtocolCounter = ProtocolCounter + 1;
     end 
@@ -51,10 +47,7 @@ function NumberOfProjections = fct_segmentreducer(SampleWidth,AmountOfSubScans,M
         end
     end
     % only give back unique NumProjs
-    NumberOfProjections = flipud(unique(NumberOfProjections,'rows','last'))
-    %sort NumberOfProjections according to total NumProj for each SubScans
-    [dummy,sortIDX] = sort(sum(NumberOfProjections,2));
-    SortedNumberOfProjections = flipud(NumberOfProjections(sortIDX,:))
+    NumberOfProjections = flipud(unique(NumberOfProjections,'rows','last'));
     
 function OutputRow=fct_rowbisector(InputRow)
     OutputRow = InputRow /2;

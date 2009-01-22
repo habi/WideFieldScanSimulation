@@ -1,301 +1,252 @@
 %% Simulation of different Protocols for wide-field-scanning
-%% complete rewrite for end-user-friendliness
 
-%% 2008-10-10: initial version with splitup into functions and the like.
-%% 2008-10-15: splicing into subscans done
-%% 2008-10-17: corrected splicing, added
+%% 2008-12-18: starting completely fresh, now that the segment reducer
+%% works fine.
+%% 2008-12-19: cleanup and documentation.
+%% 2008-12-22: redid the error-plotting, calculation is switched to
+%% imabsdiff
+%% 2008-12-23: inserted exposuretime and implemented writeout.
 
-clear; close all; clc;
-warning off Images:initSize:adjustingMag % suppress the warning about big ...
-    % images, they are still displayed correctly, just a bit smaller..
-tic; disp(['It`s now ' datestr(now) ]);
+warning off Images:initSize:adjustingMag % suppress the warning about big images
+clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
 
-%% setup
-prompt={'FOV to achieve (in mm)',...                    %1
-    'DetectorWidth (in Pixels)',...                     %2
-    'AmountOfSubScans',...                              %3
-    'Magnification',...                                 %4
-    'Binning',...                                       %5
-    'Overlap',...                                       %6
-    'UseSheppLogan?',...                                %7
-    'ShowSlicingDetails',...                        	%8
-    'ShowSlices',...                                    %9
-    'Calculate the Cutline? (answering `0`=don`t calculate)',...    %10
-    'MaximalQuality',...                                %11
-    'MinimalQuality'...                                 %12
-    'Simulation-Calculation Size (512,1024,2048)',...   %13
-    'writeout',...                                      %14
-    'Exposure Time (ms)'};                              %15
-name='Input Parameters';
-numlines=1;
-%the default answer
-defaultanswer={'2.6',...  % 1 FOV
-    '1024',...          % 2 DetectorWidth
-    '[]',...            % 3 How many SubScans?
-    '10',...            % 4 Magnification
-    '2',...             % 5 Binning
-    '100',...           % 6 Overlap
-    '1',...             % 7 Use SheppLogan?
-    '1',...             % 8 Show Sclicing Details?
-    '1',...             % 9 Show the Slices?
-    '0',...             %10 Calculate Cutline?
-    '100',...           %11 Maximal NumProj Quality
-    '20',...            %12 Minimal NumProj Quality
-    '512',...           %13 Simulation Calculation Size
-    '0',...             %14 writeout
-    '100'...            %15 Exposure Time > needed for time estimation
+%% User input and value extraction
+% User Input is done via an Input Dialog (inputdlg)
+InputDialog={...
+    'FOV [mm]',...              % 1
+    'Binning',...               % 2
+    'Magnification',...         % 3
+    'Overlap [px]',...          % 4
+    'Exposure Time [ms]',...    % 5
+    'Minimal Quality [%]',...   % 6
+    'Maximal Quality [%]',...   % 7
+    'Quality Stepwitdh [%]',... % 8
+    'SimulationSize [px] (512 or 1024 is a sensible choice...)',... % 9
+    'Write a file with the final details to disk? (1=y,0=n)',...    % 10
+    'Sample Name (leave it empty and I`ll ask you later on...)',... % 11
     };
-%creates the dialog box. the user input is stored into a cell array
 
-%h=helpdlg('Enter either `DetectorWidth` or `AmountOfSubscans` in the next dialog!','Tenshun!');
-%uiwait(h);
+% Setup of the Dialog Box
+Name='Please Input the parameters or just use the Default ones where applicable';
+NumLines=1; % Number of Lines for the Boxes
 
-answer=inputdlg(prompt,name,numlines,defaultanswer);
-%notice we use {} to extract the data from the cell array
-FOV_um             = str2num(answer{1});
-FOV_um             = FOV_um *1000;
-DetectorWidth      = str2num(answer{2}); %[] or number. define here if you want to have a certain amount of subscans. then we redefine DetectorWidth.
-AmountOfSubScans   = str2num(answer{3});
-Magnification      = str2num(answer{4});
-Binning            = str2num(answer{5});
-Overlap            = str2num(answer{6});
-useSheppLogan      = str2num(answer{7});
-ShowSlicingDetails = str2num(answer{8});
-ShowSlices         = str2num(answer{9});
-CalculateCutline   = str2num(answer{10});
-MaximalQuality     = str2num(answer{11});
-MinimalQuality     = str2num(answer{12});
-ModelWidth         = str2num(answer{13});
-writeout           = str2num(answer{14});
-ExposureTime       = str2num(answer{15});
-pause(0.01)
-WorkPath='P:\MATLAB\wfs-sim\';
-%% setup data structure to save the stuff into
-SubScans = [struct('Image',[],'Cutline',[],'CutImage',[],'NumProj',[],'Sinogram',[],'Reconstruction',[])];
+% The default Answers are...
+Defaults={...
+    '4.0',...   % 1
+    '1',...     % 2
+    '10',...    % 3
+    '100',...   % 4
+    '125',...   % 5
+    '10',...    % 6
+    '100',...   % 7
+    '20',...    % 8
+    '256',...   % 9
+    '0',...     % 10
+    'R108test1',... % 11
+    };
+ 
+% Creates the Dialog box. Input is stored in UserInput array
+UserInput=inputdlg(InputDialog,Name,NumLines,Defaults);
+ 
+% Extract the answers from the array
+FOV_mm            = str2num(UserInput{1});  % This is the FOV the user wants to achieve
+Binning           = str2num(UserInput{2});  % since the Camera is 2048px wide, the binning influences the DetectorWidth
+Magnification     = str2num(UserInput{3});  % Magn. and Binning influence the pixelsize
+Overlap_px        = str2num(UserInput{4});  % Overlap between the SubScans, needed for merging
+ExposureTime      = str2num(UserInput{5});  % Exposure Time, needed for Total Scan Time estimation
+MinimalQuality    = str2num(UserInput{6});  % minimal Quality for Simulation
+MaximalQuality    = str2num(UserInput{7});  % maximal Quality for Simulation     
+QualityStepWidth  = str2num(UserInput{8});  % Quality StepWidth, generally 10%
+SimulationSize_px = str2num(UserInput{9});  % DownSizing Factor for Simulation > for Speedup
+writeout          = str2num(UserInput{10}); % Do we write a PreferenceFile to disk at the end?
+UserSampleName    = UserInput{11};          % SampleName For OutputFile, now without str2num, since it's already a string...
 
-%% calculations
-%% AmountOfSubscans
+%% Calculations needed for progress
+pixelsize = 7.4 / Magnification * Binning; % makes Pixel Size [um] equal to second table on TOMCAT website (http://is.gd/citz)
 
-%% calculate pixelsize and amount of subscans
-% if AmountOfSubscans is given, we're not setting anything, but using the
-% given value
-if isempty(AmountOfSubScans) == 1 % none given
-    ImageSegmentWidth_px = DetectorWidth - Overlap;
-    AmountOfSubScans=ceil( FOV_um / ImageSegmentWidth_px);
-    disp(['We need ' num2str(AmountOfSubScans) ' SubScans to cover the chosen FOV']);
-    if mod(AmountOfSubScans,2) == 0 % AmountOfSubScans given
-        AmountOfSubScans = AmountOfSubScans +1;
-        disp(['Since we need an odd Number of SubScans, were adding one, leading to ' num2str(AmountOfSubScans) ' SubScans'])
-    end
-elseif isempty(AmountOfSubScans) == 0 % AmountOfSubScans is given, we're thus redefining the Detector and the ImageSegmentWidth
-    disp(['We`re using  ' num2str(AmountOfSubScans) ' SubScans, as you wish']);
-    disp('We`re thus rescaling the DetectorWidth & ImageSegmentWidth to suit your settings!')
-    DetectorWidth = ceil(( FOV_um + ((AmountOfSubScans+1)*Overlap))/ AmountOfSubScans);
-    ImageSegmentWidth_px = DetectorWidth - Overlap;
-    disp(['The new DetectorWidth is ' num2str(DetectorWidth) 'px'])
-    disp(['The new ImageSegmentWidth_px is ' num2str(ImageSegmentWidth_px) 'px'])
+FOV_px = round( FOV_mm * 1000 / pixelsize); % mm -> um -> px
+DetectorWidth_px= 2048 / Binning;  % The camera is 2048 px wide > FOV scales with binning
+
+SegmentWidth_px = DetectorWidth_px - Overlap_px;
+AmountOfSubScans = ceil( FOV_px / SegmentWidth_px );  
+
+pause(0.001);disp([num2str(AmountOfSubScans) ' SubScans are needed to cover your chosen FOV']);
+if mod(AmountOfSubScans,2) == 0 % AmountOfSubScans needs to be odd
+    AmountOfSubScans = AmountOfSubScans +1;
+    disp(['Since an odd Amount of SubScans is needed, we acquire ' num2str(AmountOfSubScans) ' SubScans.'])
 end
 
-disp(['We`re having ' num2str(AmountOfSubScans*ImageSegmentWidth_px-FOV_um) 'px too much,'])
-disp(['since we`re covering ' num2str(FOV_um) 'um with ' num2str(AmountOfSubScans) ' SubScans...'])
+ActualFOV_px = AmountOfSubScans * SegmentWidth_px; % this is the real actual FOV, which we aquire
+disp(['Your sample could be ' num2str((ActualFOV_px*pixelsize/1000) - FOV_mm) ' mm wider and would still fit into this protocol...']);
+disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and would still fit into this protocol...']);
 
-% binning and pixelsize
-% convert FOV_um into SampleWidth (px) using pixelsize
-pixelsize = 7 / Magnification; % according to the table I've used in the NDS-Masterthesis this is the deal.
-pizelsize = pixelsize * Binning;
-SampleWidth = round( FOV_um / pixelsize );
+%% Generate 'Table' with Number of Projections
+NumberOfProjections = fct_ProtocolGenerator(ActualFOV_px,AmountOfSubScans,MinimalQuality,MaximalQuality,QualityStepWidth);
 
-if useSheppLogan==1
-    Image = imnoise(phantom(SampleWidth),'gaussian');
-else
-    Image = imread([ WorkPath 'R108C04C_merge0001.tif']);
-    Image = imresize(Image, [NaN SampleWidth]);
+AmountOfProtocols=size(NumberOfProjections,1);
+
+TotalProjectionsPerProtocol = sum(NumberOfProjections,2);
+[ dummy SortIndex] = sort(TotalProjectionsPerProtocol);
+pause(0.001);
+
+% plot this table
+figure
+    plot(TotalProjectionsPerProtocol(SortIndex),'-o');
+    xlabel('Protocol')
+    ylabel('Total NumProj')
+    set(gca,'XTick',[1:AmountOfProtocols])
+    set(gca,'XTickLabel',SortIndex)
+
+%% Simulating these Protocols to give the end-user a possibility to choose
+% Use SimulationSize input at the beginning to reduce the calculations to
+% this size, or else it just takes too long...
+ModelReductionFactor = SimulationSize_px / ActualFOV_px;
+ModelOverlap_px= round( Overlap_px * ModelReductionFactor );
+if ModelOverlap_px < 4 % Overlap needs to be above 4 pixels to reliably calculate the merging.
+    CorrectedReductionFactor = 4 / Overlap_px ;
+    h=helpdlg(['The Overlap for your chosen Model Size is ' num2str(ModelOverlap_px) ...
+        ' px (=below 4 px). I`m thus redefining the Reduction Factor from ' ...
+        num2str(round(ModelReductionFactor*1000)/1000) ' to ' num2str(CorrectedReductionFactor)],... %*1000/1000 is used to display 3 digits...
+        'Tenshun!');
+    SimulationSize_px = round( SimulationSize_px * CorrectedReductionFactor / ModelReductionFactor );
+    ModelReductionFactor = CorrectedReductionFactor;
+    ModelOverlap_px = round(Overlap_px * ModelReductionFactor);
+    uiwait(h);
 end
+pause(0.001);
 
-% the function saves the sliced subscans in SubScans.Image
-%SubScans = fct_ImageSlicer(Image,AmountOfSubScans,DetectorWidth,Overlap,ShowSlicingDetails);
-
-if ShowSlices == 1 
-    figure
-        for n=1:length(SubScans)
-            subplot(1,length(SubScans),n)
-                imshow(SubScans(n).Image)
-                axis on tight
-        end
-end
-
-%% cutline generation
-disp('the cutlines are:')
-for n=1:AmountOfSubScans-1
-    % SubScans(n).Image=double(SubScans(n).Image)
-    if CalculateCutline == 1
-        SubScans(n).Cutline=fct_CutlineCalculator(SubScans(n).Image,SubScans(n+1).Image);
-    elseif CalculateCutline == 0
-        SubScans(n).Cutline = Overlap/2;
-    end
-    disp(['from image ' num2str(n) ' to ' num2str(n+1) ': ' num2str(SubScans(n).Cutline)])
-end
-
-%% output
-% ConcatenatedImage = [];
-% MergedImage = [];
-% for n=1:AmountOfSubScans-1
-%     ConcatenatedImage = [ ConcatenatedImage SubScans(n).Image ];
-%     SubScans(n).CutImage = SubScans(n).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
-%     MergedImage = [ MergedImage SubScans(n).CutImage ];
-% end
-% SubScans(AmountOfSubScans).CutImage = SubScans(AmountOfSubScans).Image(:,1:size(SubScans(n).Image,2)-abs(SubScans(n).Cutline));
-% ConcatenatedImage = [ ConcatenatedImage SubScans(AmountOfSubScans).Image ];
-% MergedImage = [ MergedImage SubScans(AmountOfSubScans).Image ];
-
-ConcatenatedImage = Image;
-MergedImage = Image;
-
-figure('name','Images')
-    subplot(211)
-        imshow(ConcatenatedImage,[])
-        axis on
-        title('Concatenated Image')
-%figure('name','Merged Image')
-    subplot(212)
-        imshow(MergedImage,[])
-        axis on
-        title('Merged Image')
-
-%NumberOfProjections = fct_v3_SegmentGenerator(SampleWidth,AmountOfSubScans,MinimalQuality,MaximalQuality,10)
-NumberOfProjections = fct_segmentreducer(SampleWidth,AmountOfSubScans,MinimalQuality,MaximalQuality)
-ProjectionsSize=size(NumberOfProjections);
-
-%% calculate reduction factor for error-calculation
-ModelReductionFactor = ModelWidth / SampleWidth;
-ModelOverlap= round(Overlap * ModelReductionFactor);
-if ModelOverlap < 5
-    h=helpdlg('The Overlap for the Model would be below 5 pixels, I`m thus redefining the Reduction Factor','Tenshun!');
-    NewReductionFactor = 5/Overlap
-    ModelWidth = round(SampleWidth * NewReductionFactor)
-    ModelReductionFactor = ModelWidth / SampleWidth
-    ModelOverlap = round(Overlap * ModelReductionFactor)
-end
-
-Image = MergedImage;
+disp(['The actual FOV is ' num2str(ActualFOV_px) ' pixels, the set ModelSize is ' num2str(SimulationSize_px) ...
+    ', we are thus reducing our calculations approx. ' num2str(round(1/ModelReductionFactor)) ' times.']);
+pause(0.001);
 
 ModelNumberOfProjections = round(NumberOfProjections .* ModelReductionFactor);
-ModelImage = imresize(Image,ModelReductionFactor);
-ModelDetectorWidth = round(DetectorWidth * ModelReductionFactor);
-theta = 1:180/ModelNumberOfProjections(1):180;
+disp('Generating ModelPhantom...');
+ModelImage = phantom( round( ActualFOV_px*ModelReductionFactor ) );
+ModelImage = imnoise(ModelImage,'gaussian',0,0.005);
+ModelDetectorWidth = round( DetectorWidth_px * ModelReductionFactor );
+theta = 1:179/ModelNumberOfProjections(1):180;
+disp('Calculating ModelSinogram...');
 ModelMaximalSinogram = radon(ModelImage,theta);
+disp('Calculating ModelReconstruction...');
 ModelMaximalReconstruction = iradon(ModelMaximalSinogram,theta);
 
-% disp('model sinogram generation')
-% ModelSinogram = radon(ModelImage,[0:(179/(max(max(ModelNumberOfProjections))-1)):179]);
-% 
-% disp('model reconstruction calculation')
-% ModelReconstruction = iradon(ModelSinogram,[0:(179/(max(max(ModelNumberOfProjections))-1)):179],...
-%         'linear','Ram-lak',1,max(max(ModelNumberOfProjections)));
-    
-% figure;
-%     imshow(ModelSinogram,[]);
-% figure;
-%     imshow(ModelReconstruction,[]);
-
+h = waitbar(0,['Simulating']);
 for Protocol = 1:size(ModelNumberOfProjections,1)
+    waitbar(Protocol/size(ModelNumberOfProjections,1),h,['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) '.'])
     disp('---');
-    disp(['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) ' in total.']);
+    disp(['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) '.']);
     % calculating the error to the original, fullsize protocol
     % uses ModelSinogram and current NumberOfProjections as input
-    [ AbsoluteError(Protocol), ErrorPerPixel(Protocol) ] = fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction);
-    TotalScanTime(Protocol) = sum(NumberOfProjections(Protocol,:)) * ExposureTime / 1000;
+    ShowTheFigures = 1;
+    [ AbsoluteError(Protocol), ErrorPerPixel(Protocol) ] = ...
+        fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction,ShowTheFigures);
+    pause(0.001);
 end
+close(h)
 
 %% Normalizing the Error
-% AverageError = max(AverageError) - AverageError;
-% QualitySize = InitialQuality - SegmentQuality;
-Error =  ErrorPerPixel ./ max(ErrorPerPixel);
-Error = Error - Error(1); % erster Fehler substrahieren, damit bestes Protokoll Fehler = 0 hat.
-%Error = ( 1 - Error ) .* MaximalQuality;
-[ Dummy,SortIndex] = sort(TotalScanTime);
+Quality = max(ErrorPerPixel) - ErrorPerPixel;
+Quality = Quality ./ max(Quality) * ( MaximalQuality - MinimalQuality) + MinimalQuality;
 
 %% display error
 figure
-    plot(TotalScanTime(SortIndex),AbsoluteError(SortIndex),'--s');
-    xlabel(['Estimated Total Scan Time [s] @ an Exposure Time of ' num2str(ExposureTime) ' ms per Proj.']);
-	ylabel('Error: $$\sum\sum\sqrt{DiffImage}$$ [au]','Interpreter','latex');
+    plot(TotalProjectionsPerProtocol(SortIndex),AbsoluteError(SortIndex),'-o');
+    xlabel(['Total Number Of Projections per Protocol']);
+	ylabel('$$\sum\sum$$(imabsdiff(Phantom-Reconstruction)) [au]','Interpreter','latex');
     grid on;
+    title('Absolute Error, sorted with Total Number of Projections');
 figure
-    plot(TotalScanTime(SortIndex),ErrorPerPixel(SortIndex),'--s');
-    xlabel(['Estimated Total Scan Time [s] @ an Exposure Time of ' num2str(ExposureTime) ' ms per Proj.']);
+    plot(TotalProjectionsPerProtocol(SortIndex),ErrorPerPixel(SortIndex),'-o');
+    xlabel(['Total Number Of Projections per Protocol']);
 	ylabel('Expected Quality of the Scan [au]');
     grid on;
+    title('Error per Pixel, sorted with Total Number of Projections');
 figure
-    plot(TotalScanTime(SortIndex),Error(SortIndex),'--s');
-    xlabel(['Estimated Total Scan Time [s] @ an Exposure Time of ' num2str(ExposureTime) ' ms per Proj.']);
+    ScanningTime = TotalProjectionsPerProtocol * ExposureTime / 1000 / 60;
+%     % Calculate fit parameters
+%     [FittedQuality,ErrorEst] = polyfit(ScanningTime(SortIndex),QualityMeasure(SortIndex)',5);
+%     % Evaluate the fit
+%     EvalFittedQuality = polyval(FittedQuality,ScanningTime,ErrorEst);
+%     % Plot the data and the fit
+%     plot(ScanningTime,EvalFittedQuality,'-',ScanningTime(SortIndex),QualityMeasure(SortIndex),'+');  
+    plot(ScanningTime(SortIndex),Quality(SortIndex),'-o');
+    xlabel(['estimated Scanning Time [min]']);
+    ylim([0 120]) 
     ylabel('Expected Quality of the Scan [%]');
     grid on;
+    title('QualityMeasure plotted vs. sorted Total Number of Projections');
     
-%% choose which protocol
-% h=helpdlg('Choose 1 square from the quality-plot (quality vs. total scan-time!). One square corresponds to one possible protocol. Take a good look at the time on the left and the quality on the bottom. I`ll then calculate the protocol that best fits your choice','Protocol Selection'); 
-% uiwait(h);
-% [userx,usery] = ginput(1);
-% [mindiff minidx ] = min(abs(Error - usery));
-% NumberOfProjections = flipud(NumberOfProjections);
-% UserNumProj = NumberOfProjections(minidx,:);
-% NumberOfProjections = flipud(NumberOfProjections);    
-%     
-% if writeout == 1
-%     %% choose the path
-%     h=helpdlg('Now please choose a path where I should write the output-file'); 
-%     close;
-%     uiwait(h);
-%     %UserPath = uigetdir;
-%     %pause(0.5);
-%     disp('USING HARDCODED UserPATH SINCE X-SERVER DOESNT OPEN uigetdir!!!');
-%     UserPath = '/sls/X02DA/Data10/e11126/2008b'
-%     %% input samplename
-%     UserSampleName = input('Now please input a SampleName: ', 's');
-% end
-% 
-% %% output the NumProj the user wants into Matrix
-% ScanWhichTheUserWants = UserNumProj;
-% h=helpdlg(['I`ve chosen protocol ' num2str(minidx) ' corresponding to ' num2str(size(NumberOfProjections,2)) ...
-%     ' scans with NumProj like this: ' num2str(ScanWhichTheUserWants) ' as a best match to your selection.']);
-% uiwait(h);
-% % write NumProj to first column of output
-% OutputMatrix(:,1)=ceil(ScanWhichTheUserWants);
-% 
-% %% calculate InbeamPosition
-% ImageSegmentWidth_um = ImageSegmentWidth_px * pixelsize;
-% UserInbeamPosition=ones(size(ScanWhichTheUserWants,2),1);
-% for position = 1:length(UserInbeamPosition)
-%     UserInbeamPosition(position) = ImageSegmentWidth_um * position - (ceil(length(UserInbeamPosition)/2)*ImageSegmentWidth_um);
-% end
-% % write InbeamPositions to second column of output
-% OutputMatrix(:,2)=UserInbeamPosition;
-% 
-% %% set angles
-% RotationStartAngle = 45;
-% RotationStopAngle  = 225;
-% % write angles to second column of output
-% OutputMatrix(:,3)=RotationStartAngle;
-% OutputMatrix(:,4)=RotationStopAngle;
-% 
-% if writeout == 1
-%     %% write Header to textfile
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Path = ' UserPath],'delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# SampleName = ' UserSampleName],'-append','delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# FOV = ' num2str(FOV_um) 'um'],'-append','delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# DetectorWidth = ' num2str(DetectorWidth_px) 'px'],'-append','delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Magnification = ' num2str(Magnification) 'x'],'-append','delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Binning = ' num2str(Binning) ' x ' num2str(Binning)],'-append','delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], ['# Overlap = ' num2str(Overlap_px) ' px'],'-append','delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], '#---','-append','delimiter','');
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
-%     % dlmwrite([UserPath '/' UserSampleName '.txt' ], '#---','-append','delimiter','');
-% 
-%     %% write final output matrix to text file
-%     dlmwrite([UserPath '/' UserSampleName '.txt' ], OutputMatrix,  '-append', 'roffset', 1, 'delimiter', ' ');
-% end    
-    
+%% Let the user choose a protocol
+h=helpdlg(['Choose 1 circle from the plot (quality vs. total scan-time!). ' ...
+    'One circle corresponds to one possible protocol. Take a good look ' ...
+    'at the time vs. the quality . I`ll then calculate the protocol that '...
+    'best fits your choice','Protocol Selection']); 
+uiwait(h);
+[ userx, usery ] = ginput(1);
+[ mindiff minidx ] = min(abs(ScanningTime - userx));
+% SortedNumProj = NumberOfProjections(SortIndex,:);
+% UserNumProj = SortedNumProj(minidx,:);
+UserNumProj = NumberOfProjections(minidx,:);
+
+%% write the UserNumProj to disk, so we can use it with
+%% widefieldscan_final.py
+if writeout == 1
+    % choose the path
+    h=helpdlg('Now please choose a path where I should write the output-file'); 
+    uiwait(h);
+    UserPath = uigetdir;
+    pause(0.01);
+    % disp('USING HARDCODED UserPATH SINCE X-SERVER DOESNT OPEN uigetdir!!!');
+    % UserPath = '/sls/X02DA/Data10/e11126/2008b'
+    % input samplename
+    if isempty(UserSampleName)
+        UserSampleName = input('Now please input a SampleName: ', 's');
+    end
+    h=helpdlg(['I`ve chosen protocol ' num2str(minidx) ' corresponding to ' ...
+        num2str(size(NumberOfProjections,2)) ' scans with NumProj like this: ' ...
+        num2str(UserNumProj) ' as a best match to your selection.']);
+    uiwait(h);
+
+    % calculate InbeamPosition
+    SegmentWidth_um = SegmentWidth_px * pixelsize;
+    UserInbeamPosition=ones(AmountOfSubScans,1);
+    for position = 1:length(UserInbeamPosition)
+        UserInbeamPosition(position) = SegmentWidth_um * position - ( ceil ( length(UserInbeamPosition)/2) * SegmentWidth_um);
+    end
+    % set angles
+    RotationStartAngle = 45;
+    RotationStopAngle  = 225;
+
+    % NumProj to first column of output
+    OutputMatrix(:,1)=UserNumProj;
+    % InbeamPositions to second column of output
+    OutputMatrix(:,2)=UserInbeamPosition;
+    % Start and Stop Angles to third and fourth column of output
+    OutputMatrix(:,3)=RotationStartAngle;
+    OutputMatrix(:,4)=RotationStopAngle;
+
+    % write Header to textfile 'file'
+    % 'filesep' makes sure we're using the correct directory separator
+    % depending on the platform
+    filename = [UserPath filesep UserSampleName '.txt' ];
+    dlmwrite(filename, ['# Path = ' UserPath],'delimiter','');
+    dlmwrite(filename, ['# SampleName = ' UserSampleName],'-append','delimiter','');
+    dlmwrite(filename, ['# chosen FOV = ' num2str(FOV_mm) ' mm'],'-append','delimiter','');
+    dlmwrite(filename, ['# chosen FOV = ' num2str(FOV_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, ['# actual FOV = ' num2str(ActualFOV_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, ['# DetectorWidth = ' num2str(DetectorWidth_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, ['# Magnification = ' num2str(Magnification) 'x'],'-append','delimiter','');
+    dlmwrite(filename, ['# Binning = ' num2str(Binning) ' x ' num2str(Binning)],'-append','delimiter','');
+    dlmwrite(filename, ['# Overlap = ' num2str(Overlap_px) ' pixels'],'-append','delimiter','');
+    dlmwrite(filename, '#---','-append','delimiter','');
+    dlmwrite(filename, '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
+    dlmwrite(filename, '#---','-append','delimiter','');
+    % write SubScanDetails to text file
+    dlmwrite(filename, OutputMatrix,  '-append', 'roffset', 1, 'delimiter', ' ');
+end  
+
 %% finish
+disp('-----');
 disp('I`m done with all you`ve asked for...')
 disp(['It`s now ' datestr(now) ]);
 zyt=toc;sekunde=round(zyt);minute = floor(sekunde/60);stunde = floor(minute/60);
