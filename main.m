@@ -1,14 +1,14 @@
 %% Simulation of different Protocols for wide-field-scanning
-
-%% 2008-12-18: starting completely fresh, now that the segment reducer
-%% works fine.
-%% 2008-12-19: cleanup and documentation.
-%% 2008-12-22: redid the error-plotting, calculation is switched to
-%% imabsdiff
-%% 2008-12-23: inserted exposuretime and implemented writeout.
-
+% Main file for WideFieldScan-Simulation
+%
+% the file can be started in the matlab console and then runs fully self-contained, as long as the   starttemplatesize ....... Width of the phantom image to generate
 warning off Images:initSize:adjustingMag % suppress the warning about big images
 clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
+
+printit = 1;
+printdir = 'C:\Documents and Settings\haberthuer\Desktop\MatlabPlots';
+mkdir(printdir);
+writeas = '-djpeg';
 
 %% User input and value extraction
 % User Input is done via an Input Dialog (inputdlg)
@@ -35,11 +35,11 @@ Defaults={...
     '4.0',...   % 1
     '1',...     % 2
     '10',...    % 3
-    '100',...   % 4
+    '150',...   % 4
     '125',...   % 5
     '10',...    % 6
     '100',...   % 7
-    '20',...    % 8
+    '5',...    % 8
     '256',...   % 9
     '0',...     % 10
     'R108test1',... % 11
@@ -81,11 +81,10 @@ disp(['Your sample could be ' num2str((ActualFOV_px*pixelsize/1000) - FOV_mm) ' 
 disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and would still fit into this protocol...']);
 
 %% Generate 'Table' with Number of Projections
-NumberOfProjections = fct_ProtocolGenerator(ActualFOV_px,AmountOfSubScans,MinimalQuality,MaximalQuality,QualityStepWidth);
-
+NumberOfProjections = fct_ProtocolGenerator(ActualFOV_px,AmountOfSubScans,MinimalQuality,MaximalQuality,QualityStepWidth)
 AmountOfProtocols=size(NumberOfProjections,1);
 
-TotalProjectionsPerProtocol = sum(NumberOfProjections,2);
+TotalProjectionsPerProtocol = sum(NumberOfProjections,2)
 [ dummy SortIndex] = sort(TotalProjectionsPerProtocol);
 pause(0.001);
 
@@ -96,17 +95,24 @@ figure
     ylabel('Total NumProj')
     set(gca,'XTick',[1:AmountOfProtocols])
     set(gca,'XTickLabel',SortIndex)
+    
+if printit == 1
+    File = [ 'TotalProjectionsPlot' ];
+    filename = [ printdir filesep File ];
+    print(writeas, filename);
+end  
 
 %% Simulating these Protocols to give the end-user a possibility to choose
 % Use SimulationSize input at the beginning to reduce the calculations to
 % this size, or else it just takes too long...
 ModelReductionFactor = SimulationSize_px / ActualFOV_px;
 ModelOverlap_px= round( Overlap_px * ModelReductionFactor );
-if ModelOverlap_px < 4 % Overlap needs to be above 4 pixels to reliably calculate the merging.
-    CorrectedReductionFactor = 4 / Overlap_px ;
+MinimalOverlap = 3;
+if ModelOverlap_px < MinimalOverlap % Overlap needs to be above 4 pixels to reliably calculate the merging.
+    CorrectedReductionFactor = MinimalOverlap / Overlap_px ;
     h=helpdlg(['The Overlap for your chosen Model Size is ' num2str(ModelOverlap_px) ...
-        ' px (=below 4 px). I`m thus redefining the Reduction Factor from ' ...
-        num2str(round(ModelReductionFactor*1000)/1000) ' to ' num2str(CorrectedReductionFactor)],... %*1000/1000 is used to display 3 digits...
+        ' px (=below ' num2str(MinimalOverlap) 'px). I`m thus redefining the Reduction Factor from ' ...
+        num2str(round(ModelReductionFactor*1000)/1000) ' to ' num2str(round(CorrectedReductionFactor*1000)/1000) ],... %*1000/1000 is used to display 3 digits...
         'Tenshun!');
     SimulationSize_px = round( SimulationSize_px * CorrectedReductionFactor / ModelReductionFactor );
     ModelReductionFactor = CorrectedReductionFactor;
@@ -122,6 +128,7 @@ pause(0.001);
 ModelNumberOfProjections = round(NumberOfProjections .* ModelReductionFactor);
 disp('Generating ModelPhantom...');
 ModelImage = phantom( round( ActualFOV_px*ModelReductionFactor ) );
+ModelSize=size(ModelImage,1);
 ModelImage = imnoise(ModelImage,'gaussian',0,0.005);
 ModelDetectorWidth = round( DetectorWidth_px * ModelReductionFactor );
 theta = 1:179/ModelNumberOfProjections(1):180;
@@ -137,7 +144,7 @@ for Protocol = 1:size(ModelNumberOfProjections,1)
     disp(['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) '.']);
     % calculating the error to the original, fullsize protocol
     % uses ModelSinogram and current NumberOfProjections as input
-    ShowTheFigures = 1;
+    ShowTheFigures = 0;
     [ AbsoluteError(Protocol), ErrorPerPixel(Protocol) ] = ...
         fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction,ShowTheFigures);
     pause(0.001);
@@ -155,27 +162,56 @@ figure
 	ylabel('$$\sum\sum$$(imabsdiff(Phantom-Reconstruction)) [au]','Interpreter','latex');
     grid on;
     title('Absolute Error, sorted with Total Number of Projections');
+    if printit == 1
+        File = [ num2str(ModelSize) 'px-AbsoluteErrorPlot' ];
+        filename = [ printdir filesep File ];
+        print(writeas, filename);
+    end  
 figure
     plot(TotalProjectionsPerProtocol(SortIndex),ErrorPerPixel(SortIndex),'-o');
     xlabel(['Total Number Of Projections per Protocol']);
 	ylabel('Expected Quality of the Scan [au]');
     grid on;
     title('Error per Pixel, sorted with Total Number of Projections');
+    if printit == 1
+        File = [ num2str(ModelSize) 'px-ErrorPerPixelPlot' ];
+        filename = [ printdir filesep File ];
+        print(writeas, filename);
+    end  
 figure
     ScanningTime = TotalProjectionsPerProtocol * ExposureTime / 1000 / 60;
-%     % Calculate fit parameters
-%     [FittedQuality,ErrorEst] = polyfit(ScanningTime(SortIndex),QualityMeasure(SortIndex)',5);
-%     % Evaluate the fit
-%     EvalFittedQuality = polyval(FittedQuality,ScanningTime,ErrorEst);
-%     % Plot the data and the fit
-%     plot(ScanningTime,EvalFittedQuality,'-',ScanningTime(SortIndex),QualityMeasure(SortIndex),'+');  
+    % Calculate fit parameters
+    [FittedQuality,ErrorEst] = polyfit(ScanningTime,Quality',5);
+    % Evaluate the fit
+    EvalFittedQuality = polyval(FittedQuality,ScanningTime(SortIndex),ErrorEst);
+    % Plot the data and the fit
+    plot(ScanningTime(SortIndex),EvalFittedQuality,'-',ScanningTime(SortIndex),Quality(SortIndex),'+');
+    xlabel(['estimated Scanning Time [min]']);
+    ylim([0 120]) 
+    ylabel('Expected Quality of the Scan [%]');
+    grid on;
+    title('Quality plotted vs. sorted Total Number of Projections');
+    legend('polynomial Fit (5)','Protocols','Location','SouthEast')
+    if printit == 1
+        File = [ num2str(ModelSize) 'px-QualityFitPlot' ];
+        filename = [ printdir filesep File ];
+        print(writeas, filename);
+    end  
+ figure
     plot(ScanningTime(SortIndex),Quality(SortIndex),'-o');
     xlabel(['estimated Scanning Time [min]']);
     ylim([0 120]) 
     ylabel('Expected Quality of the Scan [%]');
     grid on;
-    title('QualityMeasure plotted vs. sorted Total Number of Projections');
-    
+    title('Quality plotted vs. sorted Total Number of Projections');
+    if printit == 1
+        File = [ num2str(ModelSize) 'px-QualityPlot' ];
+        filename = [ printdir filesep File ];
+        print(writeas, filename);
+    end  
+
+break
+
 %% Let the user choose a protocol
 h=helpdlg(['Choose 1 circle from the plot (quality vs. total scan-time!). ' ...
     'One circle corresponds to one possible protocol. Take a good look ' ...

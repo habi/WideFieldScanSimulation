@@ -46,8 +46,10 @@ function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfPr
             subplot(121)
                 imshow(InterPolatedReconstruction,[])
                 title('Interpolated Reconstruction');
+                axis on
             subplot(122)
                 imshow(DifferenceImage,[]);
                 title('Difference Image');
+                axis on
     end
 end
