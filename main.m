@@ -40,7 +40,7 @@ Defaults={...
     '10',...    % 6
     '100',...   % 7
     '5',...    % 8
-    '256',...   % 9
+    '128',...   % 9
     '0',...     % 10
     'R108test1',... % 11
     };
@@ -181,7 +181,7 @@ figure
 figure
     ScanningTime = TotalProjectionsPerProtocol * ExposureTime / 1000 / 60;
     % Calculate fit parameters
-    [FittedQuality,ErrorEst] = polyfit(ScanningTime,Quality',5);
+    [FittedQuality,ErrorEst] = polyfit(ScanningTime,Quality',4);
     % Evaluate the fit
     EvalFittedQuality = polyval(FittedQuality,ScanningTime(SortIndex),ErrorEst);
     % Plot the data and the fit
