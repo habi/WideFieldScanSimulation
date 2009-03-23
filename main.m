@@ -281,7 +281,7 @@ if writeout == 1
         % Start and Stop Angles to third and fourth column of output
         OutputMatrix(:,3)=RotationStartAngle;
         OutputMatrix(:,4)=RotationStopAngle;
-        dlmwrite(filename, [ '#--- Protocol ' num2str(minidx) ' with ' num2str(TotalProjectionsPerProtocol(i)) ' total Proj.---'],'-append','delimiter','');
+        dlmwrite(filename, [ '#--- Protocol ' num2str(i) ' with ' num2str(TotalProjectionsPerProtocol(i)) ' total Proj.---'],'-append','delimiter','');
         dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
         end
     elseif writeall == 0
