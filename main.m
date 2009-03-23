@@ -1,14 +1,18 @@
 %% Simulation of different Protocols for wide-field-scanning
 % Main file for WideFieldScan-Simulation
 %
-% the file can be started in the matlab console and then runs fully self-contained, as long as the   starttemplatesize ....... Width of the phantom image to generate
+% the file can be started in the matlab console and then runs fully
+% self-contained, as long as the necessary files are present
+
 warning off Images:initSize:adjustingMag % suppress the warning about big images
 clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
 
 printit = 1;
-printdir = 'C:\Documents and Settings\haberthuer\Desktop\MatlabPlots';
-mkdir(printdir);
-writeas = '-djpeg';
+printdir = [ pwd '\MatlabPlots' ];
+[status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
+writeas = '-dpng';
+
+writeall = 1; % shall we write all protocols to disk or just the selected?
 
 %% User input and value extraction
 % User Input is done via an Input Dialog (inputdlg)
@@ -35,14 +39,14 @@ Defaults={...
     '4.0',...   % 1
     '1',...     % 2
     '10',...    % 3
-    '150',...   % 4
+    '100',...   % 4
     '125',...   % 5
     '10',...    % 6
     '100',...   % 7
-    '5',...    % 8
-    '128',...   % 9
-    '0',...     % 10
-    'R108test1',... % 11
+    '5',...     % 8
+    '150',...   % 9
+    '1',...     % 10
+    '2009c',... % 11
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -76,7 +80,7 @@ if mod(AmountOfSubScans,2) == 0 % AmountOfSubScans needs to be odd
     disp(['Since an odd Amount of SubScans is needed, we acquire ' num2str(AmountOfSubScans) ' SubScans.'])
 end
 
-ActualFOV_px = AmountOfSubScans * SegmentWidth_px; % this is the real actual FOV, which we aquire
+ActualFOV_px = AmountOfSubScans * SegmentWidth_px % this is the real actual FOV, which we aquire
 disp(['Your sample could be ' num2str((ActualFOV_px*pixelsize/1000) - FOV_mm) ' mm wider and would still fit into this protocol...']);
 disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and would still fit into this protocol...']);
 
@@ -84,8 +88,8 @@ disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and 
 NumberOfProjections = fct_ProtocolGenerator(ActualFOV_px,AmountOfSubScans,MinimalQuality,MaximalQuality,QualityStepWidth)
 AmountOfProtocols=size(NumberOfProjections,1);
 
-TotalProjectionsPerProtocol = sum(NumberOfProjections,2)
-[ dummy SortIndex] = sort(TotalProjectionsPerProtocol);
+TotalProjectionsPerProtocol = sum(NumberOfProjections,2);
+[ dummy SortIndex ] = sort(TotalProjectionsPerProtocol);
 pause(0.001);
 
 % plot this table
@@ -191,7 +195,7 @@ figure
     ylabel('Expected Quality of the Scan [%]');
     grid on;
     title('Quality plotted vs. sorted Total Number of Projections');
-    legend('polynomial Fit (5)','Protocols','Location','SouthEast')
+    legend('polynomial Fit (3)','Protocols','Location','SouthEast')
     if printit == 1
         File = [ num2str(ModelSize) 'px-QualityFitPlot' ];
         filename = [ printdir filesep File ];
@@ -208,41 +212,39 @@ figure
         File = [ num2str(ModelSize) 'px-QualityPlot' ];
         filename = [ printdir filesep File ];
         print(writeas, filename);
-    end  
+    end
 
-break
+if writeall == 0    
+    %% Let the user choose a protocol
+    h=helpdlg(['Choose 1 circle from the plot (quality vs. total scan-time!). ' ...
+        'One circle corresponds to one possible protocol. Take a good look ' ...
+        'at the time vs. the quality . I`ll then calculate the protocol that '...
+        'best fits your choice']); 
+    uiwait(h);
+    [ userx, usery ] = ginput(1);
+    [ mindiff minidx ] = min(abs(ScanningTime - userx));
+    % SortedNumProj = NumberOfProjections(SortIndex,:);
+    % UserNumProj = SortedNumProj(minidx,:);
+    UserNumProj = NumberOfProjections(minidx,:);
+end
 
-%% Let the user choose a protocol
-h=helpdlg(['Choose 1 circle from the plot (quality vs. total scan-time!). ' ...
-    'One circle corresponds to one possible protocol. Take a good look ' ...
-    'at the time vs. the quality . I`ll then calculate the protocol that '...
-    'best fits your choice','Protocol Selection']); 
-uiwait(h);
-[ userx, usery ] = ginput(1);
-[ mindiff minidx ] = min(abs(ScanningTime - userx));
-% SortedNumProj = NumberOfProjections(SortIndex,:);
-% UserNumProj = SortedNumProj(minidx,:);
-UserNumProj = NumberOfProjections(minidx,:);
 
 %% write the UserNumProj to disk, so we can use it with
 %% widefieldscan_final.py
 if writeout == 1
     % choose the path
-    h=helpdlg('Now please choose a path where I should write the output-file'); 
+    h=helpdlg('Please choose a path where I should write the output-file'); 
     uiwait(h);
     UserPath = uigetdir;
     pause(0.01);
     % disp('USING HARDCODED UserPATH SINCE X-SERVER DOESNT OPEN uigetdir!!!');
     % UserPath = '/sls/X02DA/Data10/e11126/2008b'
     % input samplename
+    filename = [UserPath filesep UserSampleName '.txt' ];
     if isempty(UserSampleName)
         UserSampleName = input('Now please input a SampleName: ', 's');
     end
-    h=helpdlg(['I`ve chosen protocol ' num2str(minidx) ' corresponding to ' ...
-        num2str(size(NumberOfProjections,2)) ' scans with NumProj like this: ' ...
-        num2str(UserNumProj) ' as a best match to your selection.']);
-    uiwait(h);
-
+   
     % calculate InbeamPosition
     SegmentWidth_um = SegmentWidth_px * pixelsize;
     UserInbeamPosition=ones(AmountOfSubScans,1);
@@ -253,18 +255,8 @@ if writeout == 1
     RotationStartAngle = 45;
     RotationStopAngle  = 225;
 
-    % NumProj to first column of output
-    OutputMatrix(:,1)=UserNumProj;
-    % InbeamPositions to second column of output
-    OutputMatrix(:,2)=UserInbeamPosition;
-    % Start and Stop Angles to third and fourth column of output
-    OutputMatrix(:,3)=RotationStartAngle;
-    OutputMatrix(:,4)=RotationStopAngle;
-
-    % write Header to textfile 'file'
-    % 'filesep' makes sure we're using the correct directory separator
+    % write Header to textfile 'filename'
     % depending on the platform
-    filename = [UserPath filesep UserSampleName '.txt' ];
     dlmwrite(filename, ['# Path = ' UserPath],'delimiter','');
     dlmwrite(filename, ['# SampleName = ' UserSampleName],'-append','delimiter','');
     dlmwrite(filename, ['# chosen FOV = ' num2str(FOV_mm) ' mm'],'-append','delimiter','');
@@ -276,14 +268,45 @@ if writeout == 1
     dlmwrite(filename, ['# Overlap = ' num2str(Overlap_px) ' pixels'],'-append','delimiter','');
     dlmwrite(filename, '#---','-append','delimiter','');
     dlmwrite(filename, '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
-    dlmwrite(filename, '#---','-append','delimiter','');
-    % write SubScanDetails to text file
-    dlmwrite(filename, OutputMatrix,  '-append', 'roffset', 1, 'delimiter', ' ');
-end  
+
+    if writeall == 1
+        h=helpdlg(['I am now writing ALL (!) protocols to disk in the file "' filename '".']);
+        uiwait(h);
+        for i=1:AmountOfProtocols
+        UserNumProj = NumberOfProjections(i,:)
+        % NumProj to first column of output
+        OutputMatrix(:,1)=UserNumProj;
+        % InbeamPositions to second column of output
+        OutputMatrix(:,2)=UserInbeamPosition;
+        % Start and Stop Angles to third and fourth column of output
+        OutputMatrix(:,3)=RotationStartAngle;
+        OutputMatrix(:,4)=RotationStopAngle;
+        dlmwrite(filename, [ '#--- Protocol ' num2str(minidx) ' with ' num2str(TotalProjectionsPerProtocol(i)) ' total Proj.---'],'-append','delimiter','');
+        dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
+        end
+    elseif writeall == 0
+        h=helpdlg(['You have chosen protocol ' num2str(minidx) ' corresponding to ' ...
+            num2str(size(NumberOfProjections,2)) ' scans with NumProj like this: ' ...
+            num2str(UserNumProj) ' as a best match to your selection. I am now writing ' ...
+            'this protocol to disk in the file "' filename '".']);
+        uiwait(h);
+        % UserNumProj is already set above, so we don't need to re-set
+        % it...
+        % NumProj to first column of output
+        OutputMatrix(:,1)=UserNumProj;
+        % InbeamPositions to second column of output
+        OutputMatrix(:,2)=UserInbeamPosition;
+        % Start and Stop Angles to third and fourth column of output
+        OutputMatrix(:,3)=RotationStartAngle;
+        OutputMatrix(:,4)=RotationStopAngle;
+        dlmwrite(filename, [ '#--- Protocol ' num2str(minidx) ' with ' num2str(TotalProjectionsPerProtocol(minidx)) ' total Proj.---'],'-append','delimiter','');
+        dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
+    end % writeall
+end % writeout
 
 %% finish
 disp('-----');
-disp('I`m done with all you`ve asked for...')
+disp('I`m done with all you`ve asked for...');
 disp(['It`s now ' datestr(now) ]);
 zyt=toc;sekunde=round(zyt);minute = floor(sekunde/60);stunde = floor(minute/60);
 if stunde >= 1
