@@ -6,6 +6,7 @@
 
 warning off Images:initSize:adjustingMag % suppress the warning about big images
 clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
+addpath('P:\doc\MATLAB\matlab2tikz');
 
 printit = 1;
 printdir = [ 'P:\doc\MATLAB\wfs-sim\MatlabPlots' ];
@@ -80,7 +81,7 @@ if mod(AmountOfSubScans,2) == 0 % AmountOfSubScans needs to be odd
     disp(['Since an odd Amount of SubScans is needed, we acquire ' num2str(AmountOfSubScans) ' SubScans.'])
 end
 
-ActualFOV_px = AmountOfSubScans * SegmentWidth_px % this is the real actual FOV, which we aquire
+ActualFOV_px = AmountOfSubScans * SegmentWidth_px; % this is the real actual FOV, which we aquire
 disp(['Your sample could be ' num2str((ActualFOV_px*pixelsize/1000) - FOV_mm) ' mm wider and would still fit into this protocol...']);
 disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and would still fit into this protocol...']);
 
@@ -102,7 +103,9 @@ figure
     if printit == 1
         File = [ 'TotalProjectionsPlot' ];
         filename = [ printdir filesep File ];
-        print(writeas, filename);
+        print(writeas, filename);        
+        filename = [ filename '.tex' ];
+        matlab2tikz(filename);
     end  
 
 %% Simulating these Protocols to give the end-user a possibility to choose
@@ -169,6 +172,8 @@ figure
         File = [ num2str(ModelSize) 'px-Plot-AbsoluteErrorVsTotalProjections' ];
         filename = [ printdir filesep File ];
         print(writeas, filename);
+        filename = [ filename '.tex' ];
+        matlab2tikz(filename);
     end
 
 figure
@@ -180,7 +185,9 @@ figure
     if printit == 1
         File = [ num2str(ModelSize) 'px-Plot-ErrorPerPixelVsTotalProjections' ];
         filename = [ printdir filesep File ];
-        print(writeas, filename);
+        print(writeas, filename);        
+        filename = [ filename '.tex' ];
+        matlab2tikz(filename);
     end
     
 figure
@@ -200,7 +207,9 @@ figure
     if printit == 1
         File = [ num2str(ModelSize) 'px-Plot-QualityVsScanningTimeFit' ];
         filename = [ printdir filesep File ];
-        print(writeas, filename);
+        print(writeas, filename);        
+        filename = [ filename '.tex' ];
+        matlab2tikz(filename);
     end
  
 figure
@@ -213,22 +222,42 @@ figure
     if printit == 1
         File = [ num2str(ModelSize) 'px-Plot-QualityVsScanningTime' ];
         filename = [ printdir filesep File ];
-        print(writeas, filename);
+        print(writeas, filename);        
+        filename = [ filename '.tex' ];
+        matlab2tikz(filename); 
     end
     
- figure
+figure
     plot(SortIndex,Quality(SortIndex),'o');
-    xlabel(['estimated Scanning Time [min]']);
+    xlabel(['Total Proj']);
+    ylabel('Quality')
     ylim([0 120]) 
-    title('Quality plotted vs. Protocol Number');
+    title('Quality plotted vs. Total Proj.');
+    interval = 4;
+    set(gca,'XTick',[1:interval:AmountOfProtocols])
+    set(gca,'XTickLabel',TotalProjectionsPerProtocol(1:interval:end))
+    if printit == 1
+        File = [ num2str(ModelSize) 'px-Plot-QualityVsTotalProjections' ];
+        filename = [ printdir filesep File ];
+        print(writeas, filename);        
+        filename = [ filename '.tex' ];
+        matlab2tikz(filename);
+    end 
+
+figure
+    plot(fliplr(SortIndex),Quality(SortIndex),'o');
     xlabel('Protocol')
     ylabel('Quality')
+    ylim([0 120]) 
+    title('Quality plotted vs. Protocol Number');
     set(gca,'XTick',[1:AmountOfProtocols])
-    set(gca,'XTickLabel',fliplr(SortIndex))    
+    set(gca,'XTickLabel',34-SortIndex)
     if printit == 1
         File = [ num2str(ModelSize) 'px-Plot-QualityVsProtocols' ];
         filename = [ printdir filesep File ];
-        print(writeas, filename);
+        print(writeas, filename);        
+        filename = [ filename '.tex' ];
+        matlab2tikz(filename);
     end    
 
 if writeall == 0    
@@ -248,13 +277,15 @@ end
 %% write the UserNumProj to disk, so we can use it with
 %% widefieldscan_final.py
 if writeout == 1
-    % choose the path
-    h=helpdlg('Please choose a path where I should write the output-file'); 
-    uiwait(h);
-    UserPath = uigetdir;
-    pause(0.01);
-    % disp('USING HARDCODED UserPATH SINCE X-SERVER DOESNT OPEN uigetdir!!!');
+    % Hardcode path
+    UserPath = [ 'P:\doc\MATLAB\wfs-sim\MatlabPlots' ];
     % UserPath = '/sls/X02DA/Data10/e11126/2008b'
+    
+    % choose the path
+%     h=helpdlg('Please choose a path where I should write the output-file'); 
+%     uiwait(h);
+%     UserPath = uigetdir;
+%     pause(0.01);
     % input samplename
     filename = [UserPath filesep UserSampleName '.txt' ];
     if isempty(UserSampleName)
@@ -287,25 +318,23 @@ if writeout == 1
 
     if writeall == 1
         h=helpdlg(['I am now writing ALL (!) protocols to disk in the file "' filename '".']);
-        uiwait(h);
         for i=1:AmountOfProtocols
-        UserNumProj = NumberOfProjections(i,:)
-        % NumProj to first column of output
-        OutputMatrix(:,1)=UserNumProj;
-        % InbeamPositions to second column of output
-        OutputMatrix(:,2)=UserInbeamPosition;
-        % Start and Stop Angles to third and fourth column of output
-        OutputMatrix(:,3)=RotationStartAngle;
-        OutputMatrix(:,4)=RotationStopAngle;
-        dlmwrite(filename, [ '#--- Protocol ' num2str(i) ' with ' num2str(TotalProjectionsPerProtocol(i)) ' total Proj.---'],'-append','delimiter','');
-        dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
+            UserNumProj = NumberOfProjections(i,:);
+            % NumProj to first column of output
+            OutputMatrix(:,1)=UserNumProj;
+            % InbeamPositions to second column of output
+            OutputMatrix(:,2)=UserInbeamPosition;
+            % Start and Stop Angles to third and fourth column of output
+            OutputMatrix(:,3)=RotationStartAngle;
+            OutputMatrix(:,4)=RotationStopAngle;
+            dlmwrite(filename, [ '#--- Protocol ' num2str(i) ' with ' num2str(TotalProjectionsPerProtocol(i)) ' total Proj.---'],'-append','delimiter','');
+            dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
         end
     elseif writeall == 0
         h=helpdlg(['You have chosen protocol ' num2str(minidx) ' corresponding to ' ...
             num2str(size(NumberOfProjections,2)) ' scans with NumProj like this: ' ...
             num2str(UserNumProj) ' as a best match to your selection. I am now writing ' ...
             'this protocol to disk in the file "' filename '".']);
-        uiwait(h);
         % UserNumProj is already set above, so we don't need to re-set
         % it...
         % NumProj to first column of output
@@ -337,4 +366,7 @@ else
     disp(['It took me approx ' num2str(round(minute)) ' minutes and ' ...
         num2str(round(sekunde)) ' seconds to perform the given task' ]);
 end
+
+close all;
+
 %helpdlg('I`m done with all you`ve asked for...','Phew!');
