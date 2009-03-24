@@ -8,7 +8,7 @@ warning off Images:initSize:adjustingMag % suppress the warning about big images
 clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
 
 printit = 1;
-printdir = [ pwd '\MatlabPlots' ];
+printdir = [ 'P:\doc\MATLAB\wfs-sim\MatlabPlots' ];
 [status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
 writeas = '-dpng';
 
@@ -98,13 +98,12 @@ figure
     xlabel('Protocol')
     ylabel('Total NumProj')
     set(gca,'XTick',[1:AmountOfProtocols])
-    set(gca,'XTickLabel',SortIndex)
-    
-if printit == 1
-    File = [ 'TotalProjectionsPlot' ];
-    filename = [ printdir filesep File ];
-    print(writeas, filename);
-end  
+    set(gca,'XTickLabel',SortIndex)    
+    if printit == 1
+        File = [ 'TotalProjectionsPlot' ];
+        filename = [ printdir filesep File ];
+        print(writeas, filename);
+    end  
 
 %% Simulating these Protocols to give the end-user a possibility to choose
 % Use SimulationSize input at the beginning to reduce the calculations to
@@ -167,10 +166,11 @@ figure
     grid on;
     title('Absolute Error, sorted with Total Number of Projections');
     if printit == 1
-        File = [ num2str(ModelSize) 'px-AbsoluteErrorPlot' ];
+        File = [ num2str(ModelSize) 'px-Plot-AbsoluteErrorVsTotalProjections' ];
         filename = [ printdir filesep File ];
         print(writeas, filename);
-    end  
+    end
+
 figure
     plot(TotalProjectionsPerProtocol(SortIndex),ErrorPerPixel(SortIndex),'-o');
     xlabel(['Total Number Of Projections per Protocol']);
@@ -178,10 +178,11 @@ figure
     grid on;
     title('Error per Pixel, sorted with Total Number of Projections');
     if printit == 1
-        File = [ num2str(ModelSize) 'px-ErrorPerPixelPlot' ];
+        File = [ num2str(ModelSize) 'px-Plot-ErrorPerPixelVsTotalProjections' ];
         filename = [ printdir filesep File ];
         print(writeas, filename);
-    end  
+    end
+    
 figure
     ScanningTime = TotalProjectionsPerProtocol * ExposureTime / 1000 / 60;
     % Calculate fit parameters
@@ -189,7 +190,7 @@ figure
     % Evaluate the fit
     EvalFittedQuality = polyval(FittedQuality,ScanningTime(SortIndex),ErrorEst);
     % Plot the data and the fit
-    plot(ScanningTime(SortIndex),EvalFittedQuality,'-',ScanningTime(SortIndex),Quality(SortIndex),'+');
+    plot(ScanningTime(SortIndex),EvalFittedQuality,'-',ScanningTime(SortIndex),Quality(SortIndex),'o');
     xlabel(['estimated Scanning Time [min]']);
     ylim([0 120]) 
     ylabel('Expected Quality of the Scan [%]');
@@ -197,11 +198,12 @@ figure
     title('Quality plotted vs. sorted Total Number of Projections');
     legend('polynomial Fit (3)','Protocols','Location','SouthEast')
     if printit == 1
-        File = [ num2str(ModelSize) 'px-QualityFitPlot' ];
+        File = [ num2str(ModelSize) 'px-Plot-QualityVsScanningTimeFit' ];
         filename = [ printdir filesep File ];
         print(writeas, filename);
-    end  
- figure
+    end
+ 
+figure
     plot(ScanningTime(SortIndex),Quality(SortIndex),'-o');
     xlabel(['estimated Scanning Time [min]']);
     ylim([0 120]) 
@@ -209,10 +211,25 @@ figure
     grid on;
     title('Quality plotted vs. sorted Total Number of Projections');
     if printit == 1
-        File = [ num2str(ModelSize) 'px-QualityPlot' ];
+        File = [ num2str(ModelSize) 'px-Plot-QualityVsScanningTime' ];
         filename = [ printdir filesep File ];
         print(writeas, filename);
     end
+    
+ figure
+    plot(SortIndex,Quality(SortIndex),'o');
+    xlabel(['estimated Scanning Time [min]']);
+    ylim([0 120]) 
+    title('Quality plotted vs. Protocol Number');
+    xlabel('Protocol')
+    ylabel('Quality')
+    set(gca,'XTick',[1:AmountOfProtocols])
+    set(gca,'XTickLabel',fliplr(SortIndex))    
+    if printit == 1
+        File = [ num2str(ModelSize) 'px-Plot-QualityVsProtocols' ];
+        filename = [ printdir filesep File ];
+        print(writeas, filename);
+    end    
 
 if writeall == 0    
     %% Let the user choose a protocol
@@ -227,7 +244,6 @@ if writeall == 0
     % UserNumProj = SortedNumProj(minidx,:);
     UserNumProj = NumberOfProjections(minidx,:);
 end
-
 
 %% write the UserNumProj to disk, so we can use it with
 %% widefieldscan_final.py
