@@ -8,8 +8,8 @@ warning off Images:initSize:adjustingMag % suppress the warning about big images
 clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
 addpath('P:\doc\MATLAB\matlab2tikz');
 
-printit = 1;
-printdir = [ 'P:\doc\MATLAB\wfs-sim\MatlabPlots' ];
+printit = 0;
+printdir = [ pwd '\SimulationOutput' ];
 [status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
 writeas = '-dpng';
 
@@ -47,7 +47,7 @@ Defaults={...
     '5',...     % 8
     '150',...   % 9
     '1',...     % 10
-    '2009c',... % 11
+    '2009b',... % 11
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -89,7 +89,12 @@ disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and 
 NumberOfProjections = fct_ProtocolGenerator(ActualFOV_px,AmountOfSubScans,MinimalQuality,MaximalQuality,QualityStepWidth)
 AmountOfProtocols=size(NumberOfProjections,1);
 
+for i=1:AmountOfProtocols
+    TimePerProtocol(i) = fct_HowLongDoesItTake(ExposureTime,NumberOfProjections(i,:));
+end
+
 TotalProjectionsPerProtocol = sum(NumberOfProjections,2);
+
 [ dummy SortIndex ] = sort(TotalProjectionsPerProtocol);
 pause(0.001);
 
@@ -278,9 +283,8 @@ end
 %% widefieldscan_final.py
 if writeout == 1
     % Hardcode path
-    UserPath = [ 'P:\doc\MATLAB\wfs-sim\MatlabPlots' ];
-    % UserPath = '/sls/X02DA/Data10/e11126/2008b'
-    
+        UserPath = printdir;
+%         UserPath = '/sls/X02DA/Data10/e11126/2008b'  
     % choose the path
 %     h=helpdlg('Please choose a path where I should write the output-file'); 
 %     uiwait(h);
@@ -310,7 +314,8 @@ if writeout == 1
     dlmwrite(filename, ['# chosen FOV = ' num2str(FOV_px) ' pixels'],'-append','delimiter','');
     dlmwrite(filename, ['# actual FOV = ' num2str(ActualFOV_px) ' pixels'],'-append','delimiter','');
     dlmwrite(filename, ['# DetectorWidth = ' num2str(DetectorWidth_px) ' pixels'],'-append','delimiter','');
-    dlmwrite(filename, ['# Magnification = ' num2str(Magnification) 'x'],'-append','delimiter','');
+    dlmwrite(filename, ['# Exposure Time = ' num2str(ExposureTime) ' ms per Projection'],'-append','delimiter','');
+    dlmwrite(filename, ['# Magnification = ' num2str(Magnification) ' x'],'-append','delimiter','');
     dlmwrite(filename, ['# Binning = ' num2str(Binning) ' x ' num2str(Binning)],'-append','delimiter','');
     dlmwrite(filename, ['# Overlap = ' num2str(Overlap_px) ' pixels'],'-append','delimiter','');
     dlmwrite(filename, '#---','-append','delimiter','');
@@ -327,7 +332,9 @@ if writeout == 1
             % Start and Stop Angles to third and fourth column of output
             OutputMatrix(:,3)=RotationStartAngle;
             OutputMatrix(:,4)=RotationStopAngle;
-            dlmwrite(filename, [ '#--- Protocol ' num2str(i) ' with ' num2str(TotalProjectionsPerProtocol(i)) ' total Proj.---'],'-append','delimiter','');
+            dlmwrite(filename, [ '#--- Protocol ' num2str(i) '/' ...
+                num2str(TotalProjectionsPerProtocol(i)) ' total Proj./' ...
+                num2str(TimePerProtocol(i)) ' minutes ---'],'-append','delimiter','');
             dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
         end
     elseif writeall == 0
@@ -344,7 +351,9 @@ if writeout == 1
         % Start and Stop Angles to third and fourth column of output
         OutputMatrix(:,3)=RotationStartAngle;
         OutputMatrix(:,4)=RotationStopAngle;
-        dlmwrite(filename, [ '#--- Protocol ' num2str(minidx) ' with ' num2str(TotalProjectionsPerProtocol(minidx)) ' total Proj.---'],'-append','delimiter','');
+        dlmwrite(filename, [ '#--- Protocol ' num2str(minidx) '/' ...
+            num2str(TotalProjectionsPerProtocol(minidx)) ' total Proj./'...
+            num2str(TimePerProtocol(minidx)) ' ---'],'-append','delimiter','');
         dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
     end % writeall
 end % writeout
