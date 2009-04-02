@@ -12,9 +12,9 @@ function TotalTime=fct_HowLongDoesItTake(ExposureTime,Projections)
 % According to Fede (Tel. with her on 25.03.2009) the new stepping
 % technique uses the same Camera FiFo, but then sends a hardware trigger to
 % the RotationStage. A wait for 200 ms is implemented inbetween. The stage
-% rotates with a speed of 90°/sec.
-% We always scan with 180°-configuration, thus the time taken for 1
-% Projection can be assumed to be "1/90 * 180° * 1/NumProj"
+% rotates with a speed of 90ï¿½/sec.
+% We always scan with 180ï¿½-configuration, thus the time taken for 1
+% Projection can be assumed to be "1/90 * 180ï¿½ * 1/NumProj"
 
 %% 
 
@@ -25,7 +25,7 @@ function TotalTime=fct_HowLongDoesItTake(ExposureTime,Projections)
 
 for i=1:size(Projections,2)
     AnglePerProjection = 180 / Projections(i);  
-    TimePerProjection = AnglePerProjection * 1 / 90 * 1000  ; %1s/90° * 1000 ms/s
+    TimePerProjection = AnglePerProjection * 1 / 90 * 1000  ; %1s/90ï¿½ * 1000 ms/s
     TriggerTime = 200;
     TimePerProjection(i) = ExposureTime + TimePerProjection + TriggerTime;
     Time(i) = TimePerProjection(i) * Projections(i);

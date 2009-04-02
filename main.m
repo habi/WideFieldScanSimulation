@@ -6,10 +6,15 @@
 
 warning off Images:initSize:adjustingMag % suppress the warning about big images
 clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
-addpath('P:\doc\MATLAB\matlab2tikz');
+
+if isunix
+    addpath('/sls/X02DA/data/e11126/MATLAB/matlab2tikz');
+else
+    addpath('P:\doc\MATLAB\matlab2tikz');
+end
 
 printit = 0;
-printdir = [ pwd '\SimulationOutput' ];
+printdir = [ pwd filesep 'SimulationOutput' ];
 [status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
 writeas = '-dpng';
 
@@ -37,14 +42,14 @@ NumLines=1; % Number of Lines for the Boxes
 
 % The default Answers are...
 Defaults={...
-    '4.0',...   % 1
-    '1',...     % 2
+    '4.3',...   % 1
+    '2',...     % 2
     '10',...    % 3
-    '100',...   % 4
+    '50',...   % 4
     '125',...   % 5
     '10',...    % 6
     '100',...   % 7
-    '5',...     % 8
+    '10',...     % 8
     '150',...   % 9
     '1',...     % 10
     '2009b',... % 11
@@ -303,8 +308,8 @@ if writeout == 1
         UserInbeamPosition(position) = SegmentWidth_um * position - ( ceil ( length(UserInbeamPosition)/2) * SegmentWidth_um);
     end
     % set angles
-    RotationStartAngle = 45;
-    RotationStopAngle  = 225;
+    RotationStartAngle = 0;
+    RotationStopAngle  = 180;
 
     % write Header to textfile 'filename'
     % depending on the platform
@@ -318,12 +323,11 @@ if writeout == 1
     dlmwrite(filename, ['# Magnification = ' num2str(Magnification) ' x'],'-append','delimiter','');
     dlmwrite(filename, ['# Binning = ' num2str(Binning) ' x ' num2str(Binning)],'-append','delimiter','');
     dlmwrite(filename, ['# Overlap = ' num2str(Overlap_px) ' pixels'],'-append','delimiter','');
-    dlmwrite(filename, '#---','-append','delimiter','');
-    dlmwrite(filename, '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
-
     if writeall == 1
         h=helpdlg(['I am now writing ALL (!) protocols to disk in the file "' filename '".']);
-        for i=1:AmountOfProtocols
+        dlmwrite(filename, '#---','-append','delimiter','');
+        dlmwrite(filename, '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
+        for i=1:AmountOfProtocols  
             UserNumProj = NumberOfProjections(i,:);
             % NumProj to first column of output
             OutputMatrix(:,1)=UserNumProj;
@@ -342,6 +346,9 @@ if writeout == 1
             num2str(size(NumberOfProjections,2)) ' scans with NumProj like this: ' ...
             num2str(UserNumProj) ' as a best match to your selection. I am now writing ' ...
             'this protocol to disk in the file "' filename '".']);
+        dlmwrite(filename, ['# Chosen Protocol = Nr. ' num2str(minidx) ],'-append','delimiter','');
+        dlmwrite(filename, '#---','-append','delimiter','');
+        dlmwrite(filename, '# NumProj InBeamPosition StartAngle StopAngle','-append','delimiter','');
         % UserNumProj is already set above, so we don't need to re-set
         % it...
         % NumProj to first column of output
@@ -353,7 +360,7 @@ if writeout == 1
         OutputMatrix(:,4)=RotationStopAngle;
         dlmwrite(filename, [ '#--- Protocol ' num2str(minidx) '/' ...
             num2str(TotalProjectionsPerProtocol(minidx)) ' total Proj./'...
-            num2str(TimePerProtocol(minidx)) ' ---'],'-append','delimiter','');
+            num2str(TimePerProtocol(minidx)) ' ---#'],'-append','delimiter','');
         dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
     end % writeall
 end % writeout
