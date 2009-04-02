@@ -12,9 +12,9 @@ function TotalTime=fct_HowLongDoesItTake(ExposureTime,Projections)
 % According to Fede (Tel. with her on 25.03.2009) the new stepping
 % technique uses the same Camera FiFo, but then sends a hardware trigger to
 % the RotationStage. A wait for 200 ms is implemented inbetween. The stage
-% rotates with a speed of 90�/sec.
-% We always scan with 180�-configuration, thus the time taken for 1
-% Projection can be assumed to be "1/90 * 180� * 1/NumProj"
+% rotates with a speed of 90degree/sec.
+% We always scan with 180degree-configuration, thus the time taken for 1
+% Projection can be assumed to be "1/90 * 180degree * 1/NumProj"
 
 %% 
 
@@ -24,10 +24,16 @@ function TotalTime=fct_HowLongDoesItTake(ExposureTime,Projections)
 % disp(['We have ' num2str(size(Projections,1)) ' SubScans.']);
 
 for i=1:size(Projections,2)
+    CameraReadOutTime = 451; % according to Fede, the camera has 451 ms readout
     AnglePerProjection = 180 / Projections(i);  
-    TimePerProjection = AnglePerProjection * 1 / 90 * 1000  ; %1s/90� * 1000 ms/s
+    TimePerProjection = AnglePerProjection * 1 / 90 * 1000  ; %1s/90degree * 1000 ms/s
     TriggerTime = 200;
     TimePerProjection(i) = ExposureTime + TimePerProjection + TriggerTime;
+    if TimePerProjection(i) <= CameraReadOutTime
+        disp([' Time per Projection is smaller than Camera Readout Time, ' ...
+            ' so I am using the Readout Time.'];
+        TimePerProjection(i) = CameraReadOutTime;
+    end
     Time(i) = TimePerProjection(i) * Projections(i);
     Time(i) = round(Time(i) / 1000 / 60);
 %     disp(['SubScan ' num2str(i) ' with ' num2str(Projections(i)) ...
