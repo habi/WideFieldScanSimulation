@@ -9,7 +9,7 @@ currentdir=pwd; % save it for later, since we're cd'ing around
 
 %% setup
 UserID = 'e11126';
-BeamTime = '2008c';
+BeamTime = '2009b';
 
 if isunix == 1 
     %beamline
@@ -70,36 +70,49 @@ disp('---');
 %% output
 DividedSubScanName = [ BaseSubScanName '_div' num2str(DividingFactor) ];
 disp([ 'Im now copying the tif-files 1:' num2str(DividingFactor) ':' ...
-    num2str(NumProj) ' from ' BaseSubScanName ' to consecutive projections '...
-    'of ' DividedSubScanName ]);
+    num2str(NumProj) ' from ' BaseSubScanName ' to consecutive projections of ' ...
+    DividedSubScanName ]);
 
 OutputPath = [ fileparts(fileparts(BaseSubScanLocation)) filesep ...
     DividedSubScanName filesep 'tif' ];
 [s,mess,messid] = mkdir(OutputPath);
 
 disp(['Copying ' num2str(NumDarks) ' Darks and ' num2str(NumFlats) ' Pre-Flats']);
+w = waitbar(0,['Copying ' num2str(NumDarks) ' Darks and ' num2str(NumFlats) ' Pre-Flats']);
 OutPutCounter = 1;
 for ProjCounter = 1:NumDarks + NumFlats
+    waitbar(OutPutCounter/(size(1:DividingFactor:NumProj,2) + NumDarks + NumFlats + NumFlats));
     CopyFromFile = [ BaseSubScanLocation filesep BaseSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
     CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',OutPutCounter)) '.tif' ];
     copyfile(CopyFromFile,CopyToFile);
     OutPutCounter = OutPutCounter + 1;
 end
-disp(['Copying Projections (' num2str(NumDarks+NumFlats) ':' num2str(DividingFactor) ...
-    ':' num2str(NumProj) ') to ' num2str(round(NumProj/DividingFactor)) ' "new" Projections'])
+close(w);pause(0.001);
+%%%%%%%%%%%%%%%%%%%%%%%%
+disp(['Copying original Projections ' num2str(NumDarks+NumFlats) ':' ...
+    num2str(DividingFactor) ':' num2str(NumProj) ' to ' ...
+    num2str(size(1:DividingFactor:NumProj,2)) ' renumbered Projections.']);
+w = waitbar(0,['Copying ' num2str(size(1:DividingFactor:NumProj,2)) ' Projections']);
 for ProjCounter = NumDarks + NumFlats + 1:DividingFactor:NumProj + NumDarks + NumFlats
+    waitbar(OutPutCounter/(size(1:DividingFactor:NumProj,2) + NumDarks + NumFlats + NumFlats));
     CopyFromFile = [ BaseSubScanLocation filesep BaseSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
     CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',OutPutCounter)) '.tif' ];
     copyfile(CopyFromFile,CopyToFile);
     OutPutCounter = OutPutCounter + 1;
 end
+close(w);pause(0.001);
+%%%%%%%%%%%%%%%%%%%%%%%%
 disp(['Copying ' num2str(NumFlats) ' Post-Flats']);
+w = waitbar(0,['Copying ' num2str(NumFlats) ' Post-Flats']);
 for ProjCounter = NumProj + NumDarks + NumFlats + 1:NumProj + NumDarks + NumFlats + NumFlats
+    waitbar(OutPutCounter/(size(1:DividingFactor:NumProj,2) + NumDarks + NumFlats + NumFlats));
     CopyFromFile = [ BaseSubScanLocation filesep BaseSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
     CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',OutPutCounter)) '.tif' ];
     copyfile(CopyFromFile,CopyToFile);
     OutPutCounter = OutPutCounter + 1;
 end
+close(w);pause(0.001);
+%%%%%%%%%%%%%%%%%%%%%%%%
 disp('---');
 disp(['From ' num2str(NumProj) ' original Projections I have now copied ' ...
     num2str(NumDarks) ' Darks, ' num2str(NumFlats) ' Pre-Flats, ' ...
@@ -123,4 +136,5 @@ else
         num2str(round(sekunde)) ' seconds to perform given task' ]);
 end
 cd(currentdir);
-%helpdlg('I`m done with all you`ve asked for...','Phew!');
+helpdlg('I`m done with all you`ve asked for...','Phew!');
+
