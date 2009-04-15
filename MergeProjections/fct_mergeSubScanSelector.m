@@ -47,7 +47,8 @@ WriteEveryXth = 1;
             [ 'Please locate SubScan Nr. ' num2str(CurrentSubScan) ' of ' ...
             num2str(AmountOfSubScans) ' to be merged into ' OutputSampleName ...
             '-' OutputSuffix ]);
-        [ tmp,SubScanDetails(CurrentSubScan).SubScanName,tmp ]=fileparts(SubScanDetails(CurrentSubScan).Location);
+        [ tmp,SubScanDetails(CurrentSubScan).SubScanName,tmp ] = ...
+            fileparts(SubScanDetails(CurrentSubScan).Location);
     end
        
     for CurrentSubScan = 1:AmountOfSubScans
