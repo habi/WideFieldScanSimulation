@@ -30,20 +30,20 @@ end
 
 %% work this thing! http://is.gd/swoK
 disp('pick directory of subscan to resort/slice. I`m adding "/tif" myself...');
-%%% chose BaseSubScanLocation
-% BaseSubScanLocation = uigetdir(SamplePath,...
-%     'Please locate the SubScan which I will then re-sort');
+%% chose BaseSubScanLocation
+BaseSubScanLocation = uigetdir(SamplePath,...
+    'Please locate the SubScan which I will then re-sort');
 %%% chose BaseSubScanLocation
 %%% set BaseSubScanLocation
-BaseSubScanLocation = 'S:\SLS\2008c\R108C21Ct_s2';
+% BaseSubScanLocation = 'S:\SLS\2008c\R108C21Ct_s2';
 %%% set BaseSubScanLocation
 [ tmp,BaseSubScanName,tmp ] = fileparts(BaseSubScanLocation);
 
-NumDarks = input('how many darks? [5]:', 's');
+NumDarks = input('how many darks? [5]:');
 if isempty(NumDarks)
     NumDarks = 5;
 end
-NumFlats = input('how many flats? [20]:', 's');
+NumFlats = input('how many flats? [20]:');
 if isempty(NumFlats)
     NumFlats = 20;
 end
@@ -61,13 +61,15 @@ disp([ 'with ' num2str(NumDarks) ' darks and ' num2str(NumFlats) ' flats '...
     '(for each pre- and post-flats) we`ve acquired ' num2str(NumProj) ...
     ' projections.']);
 disp('---');
-DividingFactor= input('Please define the dividing factor for resorting [2]:', 's');
+DividingFactor= input('Please define the dividing factor for resorting [2]:');
 if isempty(DividingFactor)
 	DividingFactor = 2;
 end
 disp('---');
+
+%% output
 DividedSubScanName = [ BaseSubScanName '_div' num2str(DividingFactor) ];
-disp([ 'Im now writing the tif-files 1:' num2str(DividingFactor) ':' ...
+disp([ 'Im now copying the tif-files 1:' num2str(DividingFactor) ':' ...
     num2str(NumProj) ' from ' BaseSubScanName ' to consecutive projections '...
     'of ' DividedSubScanName ]);
 
@@ -75,27 +77,35 @@ OutputPath = [ fileparts(fileparts(BaseSubScanLocation)) filesep ...
     DividedSubScanName filesep 'tif' ];
 [s,mess,messid] = mkdir(OutputPath);
 
-disp('Copying Darks and Pre-Flats')
-for ProjCounter = 1:NumDarks+NumFlats
+disp(['Copying ' num2str(NumDarks) ' Darks and ' num2str(NumFlats) ' Pre-Flats']);
+OutPutCounter = 1;
+for ProjCounter = 1:NumDarks + NumFlats
     CopyFromFile = [ BaseSubScanLocation filesep BaseSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
-    CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
+    CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',OutPutCounter)) '.tif' ];
     copyfile(CopyFromFile,CopyToFile);
+    OutPutCounter = OutPutCounter + 1;
 end
-disp('Copying Projections')
-for ProjCounter = NumDarks+NumFlats:DividingFactor:NumProj
+disp(['Copying Projections (' num2str(NumDarks+NumFlats) ':' num2str(DividingFactor) ...
+    ':' num2str(NumProj) ') to ' num2str(round(NumProj/DividingFactor)) ' "new" Projections'])
+for ProjCounter = NumDarks + NumFlats + 1:DividingFactor:NumProj + NumDarks + NumFlats
     CopyFromFile = [ BaseSubScanLocation filesep BaseSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
-    CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
+    CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',OutPutCounter)) '.tif' ];
     copyfile(CopyFromFile,CopyToFile);
+    OutPutCounter = OutPutCounter + 1;
 end
-disp('Copying Projections')
-for ProjCounter = NumProj:NumProj+NumFlats
+disp(['Copying ' num2str(NumFlats) ' Post-Flats']);
+for ProjCounter = NumProj + NumDarks + NumFlats + 1:NumProj + NumDarks + NumFlats + NumFlats
     CopyFromFile = [ BaseSubScanLocation filesep BaseSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
-    CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',ProjCounter)) '.tif' ];
+    CopyToFile = [ OutputPath filesep DividedSubScanName num2str(sprintf('%04d',OutPutCounter)) '.tif' ];
     copyfile(CopyFromFile,CopyToFile);
+    OutPutCounter = OutPutCounter + 1;
 end
-
-%% output
-mkdir
+disp('---');
+disp(['From ' num2str(NumProj) ' original Projections I have now copied ' ...
+    num2str(NumDarks) ' Darks, ' num2str(NumFlats) ' Pre-Flats, ' ...
+    num2str(OutPutCounter-NumDarks-NumFlats-NumFlats) ' Projections (spaced ' ...
+    'by ' num2str(DividingFactor) ') and ' num2str(NumFlats) ' Post-Flats ' ...
+    'to ' OutputPath ]);
 
 %% finish
 disp('I`m done with all you`ve asked for...');disp(['It`s now ' datestr(now) ]);

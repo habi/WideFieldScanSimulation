@@ -23,9 +23,9 @@ WriteEveryXth = 1;
         addpath([ whereamI filesep UserID filesep 'MATLAB'])
         addpath([ whereamI filesep UserID filesep 'MATLAB' filesep 'SRuCT']) 
     else
-        whereamI = 'E:';
-        PathToFiles = [ filesep BeamTime ];
-        SamplePath = fullfile(whereamI, PathToFiles);   
+        whereamI = 'S:';
+        PathToFiles = [ 'SLS' filesep BeamTime ];
+        SamplePath = fullfile(whereamI, PathToFiles);
         addpath('P:\doc\MATLAB')
         addpath('P:\doc\MATLAB\SRuCT')
     end
