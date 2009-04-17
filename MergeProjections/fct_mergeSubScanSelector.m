@@ -416,19 +416,19 @@ end % if skip
     
 
     %% generate sinograms
-    if isunix=1 % only works if @TOMCAT or @slslc05
-        logfile-command = [ ' ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ]
-        disp('Hard-Linking LogFile ' OutputSampleName '-' OutputSuffix '-mrg.log with the command:');
-        disp([ '"' logfile-command '"' ]);
-        system(logfile-command);
+    if isunix == 1 % only works if @TOMCAT or @slslc05
+        logfilecommand = [ ' ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ];
+        disp(['Hard-Linking LogFile ' OutputSampleName '-' OutputSuffix '-mrg.log with the command:']);
+        disp([ '"' logfilecommand '"' ]);
+        system(logfilecommand);
     end
 
     %% generate sinograms
-    if isunix=1 % only works if @TOMCAT or @slslc05
-        sinogram-command = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
-        disp('Generating Sinograms for ' OutputSampleName '-' OutputSuffix '-mrg with:');
-        disp([ '"' sinogram-command '"' ]);
-        system(sinogram-command);
+    if isunix == 1 % only works if @TOMCAT or @slslc05
+        sinogramcommand = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
+        disp(['Generating Sinograms for ' OutputSampleName '-' OutputSuffix '-mrg with:']);
+        disp([ '"' sinogramcommand '"' ]);
+        system(sinogramcommand);
     end
     
     %% finish
