@@ -1,6 +1,7 @@
 function fct_mergeSubScan(AmountOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
 
-skip=0; % skip some unnecessary stuff, mainly for testing
+testing = 1; % calculate gry value for 2 instead of 200 images, set cutlines == 1
+skip=0; % skip Dark/Flat-stuff, mainly for testing
 showProcess = 0; 
 
 WriteEveryXth = 1;
@@ -148,8 +149,13 @@ if skip ~= 1
     end
 end % if skip
     
-    %% load a subset of the images for the calculation of GlobalMin & GlobalMax
-    GrayValueLoadHowMany = 200;
+    %% load a subset of the images for the calculation of GlobalMin &
+    %% GlobalMax
+    if testing == 1
+        GrayValueLoadHowMany = 2;
+    else
+        GrayValueLoadHowMany = 200;
+    end
     GlobalMin = 0;
     GlobalMax = 0;
     disp(['I`m randomly loading ' num2str(AmountOfSubScans * GrayValueLoadHowMany) ...
@@ -220,20 +226,24 @@ end % if skip
         SubScanDetails(CurrentSubScan).CurrentProjection = imread(CutFile);
         SubScanDetails(CurrentSubScan).CurrentProjection = -log(double(SubScanDetails(CurrentSubScan).CurrentProjection)./double(SubScanDetails(CurrentSubScan).AverageFlat));
         % compute Cutline
-        if CurrentSubScan > 1 && isinf(SubScanDetails(CurrentSubScan-1).Cutline)
-            disp(['Calculating cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
-                ' and ' SubScanDetails(CurrentSubScan).SubScanName ' (this will take some time...)']);
-            SubScanDetails(CurrentSubScan-1).Cutline = ...
-                function_cutline(SubScanDetails(CurrentSubScan-1).CurrentProjection,SubScanDetails(CurrentSubScan).CurrentProjection);
-            disp(['The cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
-                ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
-                num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);           
+        if testing == 1
+            for counter = 1:AmountOfSubScans
+                SubScanDetails(counter).Cutline = Inf;
+            end
+            for counter = 1:AmountOfSubScans - 1
+                SubScanDetails(counter).Cutline = 1;
+            end
+        else
+            if CurrentSubScan > 1 && isinf(SubScanDetails(CurrentSubScan-1).Cutline)
+                disp(['Calculating cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
+                    ' and ' SubScanDetails(CurrentSubScan).SubScanName ' (this will take some time...)']);
+                SubScanDetails(CurrentSubScan-1).Cutline = ...
+                    function_cutline(SubScanDetails(CurrentSubScan-1).CurrentProjection,SubScanDetails(CurrentSubScan).CurrentProjection);
+                disp(['The cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
+                    ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
+                    num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);           
+            end
         end
-%         SubScanDetails(1).Cutline = 90;
-%         SubScanDetails(2).Cutline = 90;
-%         SubScanDetails(3).Cutline = 61;
-%         SubScanDetails(4).Cutline = 68;
-%         SubScanDetails(5).Cutline = Inf
     end
     
     
@@ -347,7 +357,8 @@ end % if skip
     LogFileName = [ OutputSampleName '-' OutputSuffix '-mrg.log' ];
     LogFile = [ WriteDir filesep LogFileName ]; % WriteDir is used from above, so we have different paths depending on tif/DMP.
     WriteSampleName = [ OutputSampleName '-' OutputSuffix '-mrg' ];
-    
+
+    disp('----');
     disp(['Generating fake logfile for the sample ' WriteSampleName '.' ]);
 
     %% write the stuff to a faked log-file.    
@@ -414,15 +425,16 @@ end % if skip
     end
     dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
     
-
+    disp('----');
     %% generate sinograms
     if isunix == 1 % only works if @TOMCAT or @slslc05
-        logfilecommand = [ ' ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ];
+        logfilecommand = [ 'ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ];
         disp(['Hard-Linking LogFile ' OutputSampleName '-' OutputSuffix '-mrg.log with the command:']);
         disp([ '"' logfilecommand '"' ]);
         system(logfilecommand);
     end
-
+    
+    disp('----');
     %% generate sinograms
     if isunix == 1 % only works if @TOMCAT or @slslc05
         sinogramcommand = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
@@ -431,6 +443,7 @@ end % if skip
         system(sinogramcommand);
     end
     
+	disp('----');
     %% finish
     disp('I`m done with all you`ve asked for...')
     disp(['It`s now ' datestr(now) ]);
