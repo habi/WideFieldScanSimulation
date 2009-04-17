@@ -191,8 +191,8 @@ end % if skip
     % disp(['The global minimal grayvalue is ' num2str(GlobalMin) ','])
     % disp(['the global maximal grayvalue is ' num2str(GlobalMax) '.']);
 
-  %% loop over the images, calculate the cutline, save it for later and then
-%% perform the Merging
+    %% loop over the images, calculate the cutline, save it for later and then
+    %% perform the Merging
     %% Cutline Extraction
     %% Sample Orientation is crucial for Cutline Extraction, or else the
     %% cutline algorithm cannot calculate the cutline...
@@ -413,7 +413,24 @@ end % if skip
         dlmwrite(LogFile, ['Cutline between SubScan 4 and 5: ' num2str(SubScanDetails(4).Cutline) ' pixels'],'-append','delimiter','');
     end
     dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
+    
 
+    %% generate sinograms
+    if isunix=1 % only works if @TOMCAT or @slslc05
+        logfile-command = [ ' ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ]
+        disp('Hard-Linking LogFile ' OutputSampleName '-' OutputSuffix '-mrg.log with the command:');
+        disp([ '"' logfile-command '"' ]);
+        system(logfile-command);
+    end
+
+    %% generate sinograms
+    if isunix=1 % only works if @TOMCAT or @slslc05
+        sinogram-command = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
+        disp('Generating Sinograms for ' OutputSampleName '-' OutputSuffix '-mrg with:');
+        disp([ '"' sinogram-command '"' ]);
+        system(sinogram-command);
+    end
+    
     %% finish
     disp('I`m done with all you`ve asked for...')
     disp(['It`s now ' datestr(now) ]);
