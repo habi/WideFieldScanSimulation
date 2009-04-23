@@ -384,5 +384,13 @@ end % if skip
     end    
 	disp('---');
     
+    %% generate sinograms
+    command = [ /work/sls/bin/sinooff_tomcat_j.py /afs/psi.ch/user/h/haberthuer/slsbl/x02da/e11126/Data10/2009b/mrg/R108C36B-A-mrg/tif]
+
+    command = ['prj2sin ' savedir '/tif' addtosavedir '/' Filename '_conc####.tif -g 0 -f '...
+       num2str(((ProtocolNumProjRing(whichone)-1)/2)+1) ',0,0,0,0 -d -j ' num2str(255) ' -r 0,0,0,0 -o ' ...
+       savedir '/sin' addtosavedir '/' ]
+    system(command);
+    
 cd(currentLocation);
 end

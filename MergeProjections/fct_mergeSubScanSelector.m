@@ -1,6 +1,6 @@
 function fct_mergeSubScan(AmountOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
 
-testing = 1; % calculate gry value for 2 instead of 200 images, set cutlines == 1
+testing = 0; % calculate gry value for 2 instead of 200 images, set cutlines == 1
 skip=0; % skip Dark/Flat-stuff, mainly for testing
 showProcess = 0; 
 
@@ -19,7 +19,7 @@ WriteEveryXth = 1;
             %whereamI = '/sls/X02DA/data';
         %slslc05
             whereamI = '/afs/psi.ch/user/h/haberthuer/slsbl/x02da';
-        PathToFiles = [ filesep 'Data10' filesep BeamTime];    
+        PathToFiles = [ 'Data10' filesep BeamTime];    
         SamplePath = fullfile( whereamI , UserID , PathToFiles );
         addpath([ whereamI filesep UserID filesep 'MATLAB'])
         addpath([ whereamI filesep UserID filesep 'MATLAB' filesep 'SRuCT']) 
@@ -152,6 +152,7 @@ end % if skip
     %% load a subset of the images for the calculation of GlobalMin &
     %% GlobalMax
     if testing == 1
+        disp('I am only testing!');
         GrayValueLoadHowMany = 2;
     else
         GrayValueLoadHowMany = 200;
@@ -227,6 +228,7 @@ end % if skip
         SubScanDetails(CurrentSubScan).CurrentProjection = -log(double(SubScanDetails(CurrentSubScan).CurrentProjection)./double(SubScanDetails(CurrentSubScan).AverageFlat));
         % compute Cutline
         if testing == 1
+            disp('I am only testing! Setting Cutlines with "1"!');
             for counter = 1:AmountOfSubScans
                 SubScanDetails(counter).Cutline = Inf;
             end
@@ -328,6 +330,7 @@ end % if skip
         if Tiff == 1
             % mkdir for merged Proj
             WriteDir = [ SamplePath filesep 'mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'tif' ];
+            InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep PathToFiles  filesep 'mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'tif' ];
             [success,message,messageID] = mkdir(WriteDir);
             % disp(['writing ' OutputSampleName -' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.tif to disk'])
             WriteTifName = [ WriteDir filesep OutputSampleName '-' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
@@ -385,7 +388,7 @@ end % if skip
     % ------------------------Scan Settings-------------------------
     dlmwrite(LogFile, ['------------------------Scan Settings-------------------------'],'-append','delimiter','');
     % Sample folder                : /sls/X02DA/data/e11126/Data10/2008b/R108C60c_s1 
-    dlmwrite(LogFile, ['Sample folder                : ' WriteDir ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Sample folder                : ' InLogFileDir ],'-append','delimiter',''); %InLogFileDir makes sure that we always have the correct location in the logfile, also when the Files have been merged using "blmount" on some computer...
     % File Prefix                  : R108C60c_s1 
     dlmwrite(LogFile, ['File Prefix                  : ' WriteSampleName ],'-append','delimiter','');
     % Number of projections        : 4676 
