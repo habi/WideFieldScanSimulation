@@ -13,7 +13,7 @@ else
     addpath('P:\doc\MATLAB\matlab2tikz');
 end
 
-printit = 0;
+printit = 1;
 printdir = [ pwd filesep 'SimulationOutput' ];
 [status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
 writeas = '-dpng';
@@ -45,11 +45,11 @@ Defaults={...
     '4.3',...   % 1
     '2',...     % 2
     '10',...    % 3
-    '50',...   % 4
+    '100',...   % 4
     '125',...   % 5
     '10',...    % 6
     '100',...   % 7
-    '10',...     % 8
+    '5',...     % 8
     '150',...   % 9
     '1',...     % 10
     '2009b',... % 11
@@ -200,10 +200,11 @@ figure
         matlab2tikz(filename);
     end
     
+FitFactor = 5;
 figure
     ScanningTime = TotalProjectionsPerProtocol * ExposureTime / 1000 / 60;
     % Calculate fit parameters
-    [FittedQuality,ErrorEst] = polyfit(ScanningTime,Quality',4);
+    [FittedQuality,ErrorEst] = polyfit(ScanningTime,Quality',FitFactor);
     % Evaluate the fit
     EvalFittedQuality = polyval(FittedQuality,ScanningTime(SortIndex),ErrorEst);
     % Plot the data and the fit
@@ -213,7 +214,8 @@ figure
     ylabel('Expected Quality of the Scan [%]');
     grid on;
     title('Quality plotted vs. sorted Total Number of Projections');
-    legend('polynomial Fit (3)','Protocols','Location','SouthEast')
+    %legend(['polynomial Fit (' num2str(FitFactor) ')'],'Protocols','Location','SouthEast')
+    legend(['polynomial Fit'],'Protocols','Location','SouthEast')
     if printit == 1
         File = [ num2str(ModelSize) 'px-Plot-QualityVsScanningTimeFit' ];
         filename = [ printdir filesep File ];
@@ -383,6 +385,6 @@ else
         num2str(round(sekunde)) ' seconds to perform the given task' ]);
 end
 
-close all;
+% close all;
 
 %helpdlg('I`m done with all you`ve asked for...','Phew!');

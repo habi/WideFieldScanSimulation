@@ -31,7 +31,7 @@ for i=1:size(Projections,2)
     TimePerProjection(i) = ExposureTime + TimePerProjection + TriggerTime;
     if TimePerProjection(i) <= CameraReadOutTime
         disp([' Time per Projection is smaller than Camera Readout Time, ' ...
-            ' so I am using the Readout Time.'];
+            ' so I am using the Readout Time.']);
         TimePerProjection(i) = CameraReadOutTime;
     end
     Time(i) = TimePerProjection(i) * Projections(i);
