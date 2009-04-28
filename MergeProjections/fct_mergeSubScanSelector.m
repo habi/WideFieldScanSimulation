@@ -10,13 +10,13 @@ WriteEveryXth = 1;
     warning off Images:initSize:adjustingMag % suppress the warning about big images, they are still displayed correctly, just a bit smaller..
    
     UserID = 'e11126';
-    BeamTime = '2009b';
+    BeamTime = '2009c';
     Magnification = '10';
     currentLocation = pwd; % since we're 'cd'ing around, save the current location to go back to it at the end
         
     if isunix == 1 
         %beamline
-            %whereamI = '/sls/X02DA/data';
+            % whereamI = '/sls/X02DA/data';
         %slslc05
             whereamI = '/afs/psi.ch/user/h/haberthuer/slsbl/x02da';
         PathToFiles = [ 'Data10' filesep BeamTime];    
@@ -33,9 +33,9 @@ WriteEveryXth = 1;
     
     h=helpdlg(['I will now prompt you to select ' num2str(AmountOfSubScans) ...
         ' Directories for the SubScans which should be merged into one' ...
-        ' Scan called "' OutputSampleName '-' OutputSuffix '". You only need'...
-        ' to select the root-directory of each SubScan, i`ll look for the' ...\
-        ' "tif" directory inside myself...' ],'Instructions');
+        ' Scan called "' OutputSampleName '-' OutputSuffix '-mrg". You only' ...
+        ' need to select the root-directory of each SubScan, i`ll look for' ...
+        ' the "tif" directory inside myself...' ],'Instructions');
     uiwait(h);
     pause(0.01);
     
@@ -47,7 +47,7 @@ WriteEveryXth = 1;
         SubScanDetails(CurrentSubScan).Location = uigetdir(SamplePath,...
             [ 'Please locate SubScan Nr. ' num2str(CurrentSubScan) ' of ' ...
             num2str(AmountOfSubScans) ' to be merged into ' OutputSampleName ...
-            '-' OutputSuffix ]);
+            '-' OutputSuffix '-mrg' ]);
         [ tmp,SubScanDetails(CurrentSubScan).SubScanName,tmp ] = ...
             fileparts(SubScanDetails(CurrentSubScan).Location);
     end
@@ -155,7 +155,7 @@ end % if skip
         disp('I am only testing!');
         GrayValueLoadHowMany = 2;
     else
-        GrayValueLoadHowMany = 200;
+        GrayValueLoadHowMany = 100;
     end
     GlobalMin = 0;
     GlobalMax = 0;
@@ -429,7 +429,9 @@ end % if skip
     dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
     
     disp('----');
-    %% generate sinograms
+    %% hardlink logfiles
+    LogFileDir = [ SamplePath filesep 'mrg' filesep 'log' ];
+    [success,message,messageID] = mkdir(LogFileDir);
     if isunix == 1 % only works if @TOMCAT or @slslc05
         logfilecommand = [ 'ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ];
         disp(['Hard-Linking LogFile ' OutputSampleName '-' OutputSuffix '-mrg.log with the command:']);
@@ -439,14 +441,14 @@ end % if skip
     
     disp('----');
     %% generate sinograms
-    if isunix == 1 % only works if @TOMCAT or @slslc05
+    if isunix == 1 % only works if @TOMCAT,x02da-cons-2 or @slslc05...
         sinogramcommand = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
         disp(['Generating Sinograms for ' OutputSampleName '-' OutputSuffix '-mrg with:']);
         disp([ '"' sinogramcommand '"' ]);
         system(sinogramcommand);
     end
+   	disp('----');
     
-	disp('----');
     %% finish
     disp('I`m done with all you`ve asked for...')
     disp(['It`s now ' datestr(now) ]);
