@@ -26,7 +26,7 @@ function TotalTime=fct_HowLongDoesItTake(ExposureTime,Projections)
 for i=1:size(Projections,2)
     CameraReadOutTime = 451; % according to Fede, the camera has 451 ms readout
     AnglePerProjection = 180 / Projections(i);  
-    TimePerProjection = AnglePerProjection * 1 / 90 * 1000  ; %1s/90degree * 1000 ms/s
+    TimePerProjection = AnglePerProjection * 1 / 90 * 1000; %1s/90degree * 1000 ms/s
     TriggerTime = 200;
     TimePerProjection(i) = ExposureTime + TimePerProjection + TriggerTime;
     if TimePerProjection(i) <= CameraReadOutTime
@@ -41,9 +41,9 @@ for i=1:size(Projections,2)
 end
 
 TotalTime = sum(Time);
-% disp(['Only the scanning will take approx. ' num2str(TotalTime) ' minutes.']);
+% disp(['Scanning will take approx. ' num2str(TotalTime) ' minutes.']);
 TotalTime = TotalTime + size(Projections,2) - 1;
-% disp([ 'If we account 1 minute for each change between the SubScans, ' ...
-%     ' then the whole scan will take approx. ' num2str(TotalTime) ' minutes.']);
+disp('If we account 1 minute for each change between the SubScans,');
+disp([ ' then the whole scan will take approx. ' num2str(TotalTime) ' minutes.'] );
 
 end

@@ -13,7 +13,7 @@ else
     addpath('P:\doc\MATLAB\matlab2tikz');
 end
 
-printit = 1;
+printit = 0;
 printdir = [ pwd filesep 'SimulationOutput' ];
 [status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
 writeas = '-dpng';
@@ -37,22 +37,22 @@ InputDialog={...
     };
 
 % Setup of the Dialog Box
-Name='Please Input the parameters or just use the Default ones where applicable';
+Name='Please Input the scan-parameters';
 NumLines=1; % Number of Lines for the Boxes
 
 % The default Answers are...
 Defaults={...
-    '4.3',...   % 1
+    '4.1',...   % 1
     '2',...     % 2
     '10',...    % 3
     '100',...   % 4
-    '125',...   % 5
-    '10',...    % 6
+    '90',...    % 5
+    '60',...    % 6
     '100',...   % 7
-    '5',...     % 8
+    '10',...     % 8
     '150',...   % 9
     '1',...     % 10
-    '2009b',... % 11
+    '2009c-Batch',... % 11
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -290,13 +290,13 @@ end
 %% widefieldscan_final.py
 if writeout == 1
     % Hardcode path
-        UserPath = printdir;
-%         UserPath = '/sls/X02DA/Data10/e11126/2008b'  
+%        UserPath = printdir;
+         UserPath = '/sls/X02DA/Data10/e11126/2009c'  
     % choose the path
-%     h=helpdlg('Please choose a path where I should write the output-file'); 
-%     uiwait(h);
-%     UserPath = uigetdir;
-%     pause(0.01);
+%      h=helpdlg('Please choose a path where I should write the output-file'); 
+%      uiwait(h);
+%      UserPath = uigetdir;
+%      pause(0.01);
     % input samplename
     filename = [UserPath filesep UserSampleName '.txt' ];
     if isempty(UserSampleName)
