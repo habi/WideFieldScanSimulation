@@ -1,4 +1,4 @@
-clear;close all;clc;
+clear all;close all;clc;
 warning off Images:initSize:adjustingMag;
 
 BeamTime = '2009c';
@@ -25,11 +25,12 @@ end
 FilePath = fullfile(whereamI, PathToFiles);
     
 %% setup
-ResizeSize = 64;
+ResizeSize = 2049;
+showFigures = 0;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
-SlicesToDo = [1:100:1024,1024]; % 1,101,201,...,1001,1024
+SlicesToDo = [50:250:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
 for Slice = SlicesToDo
     for ProtocolCounter = 1:size(Protocols,2)
         disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ]);
@@ -58,42 +59,42 @@ for Slice = SlicesToDo
         disp('Calculating the Sum over the Difference Image as an Error-Measure')
             Details(ProtocolCounter).Error = sum( sum( Details(ProtocolCounter).DiffImg ) );      
         disp('Calculating SSIM-Index')
-            [mssim ssim_map] = ssim_index(Details(1).RecTif,Details(ProtocolCounter).RecTif);
-            Details(ProtocolCounter).SSIM = mssim;
-            Details(ProtocolCounter).SSIMMap = ssim_map;
+            [ Details(ProtocolCounter).SSIM Details(ProtocolCounter).SSIMMap ] = ...
+                ssim_index(Details(1).RecTif,Details(ProtocolCounter).RecTif);
         disp('---')
         ImgError(ProtocolCounter,SliceCounter) = Details(ProtocolCounter).Error;
     	ImgSSIM(ProtocolCounter,SliceCounter) = Details(ProtocolCounter).SSIM;
     end
 
-    clear CurrentSample;
-    clear FileName;
+    if showFigures == 1
+        for ProtocolCounter = 1:size(Protocols,2)
+            figure
+                subplot(221)
+                    imshow(Details(ProtocolCounter).RecTif,[]);
+                    title([ 'Slice ' num2str(sprintf('%04d',Slice)) ' of Protocol ' Protocols(ProtocolCounter) ])
+                subplot(222)
+                    imshow(Details(ProtocolCounter).ThresholdedSlice,[]);
+                    title([ 'Thresholded with ' num2str(Details(ProtocolCounter).Threshold * intmax(class(Details(ProtocolCounter).RecTif)))])
+                subplot(223)
+                    imshow(Details(ProtocolCounter).DiffImg,[]);
+                    title([ 'Difference Image to Protocol ' Protocols(1) ])
+                subplot(224)
+                    imshow(Details(ProtocolCounter).SSIMMap,[]);
+                    title([ 'SSIM = ' num2str(Details(ProtocolCounter).SSIM) ])
+        end
 
-    for ProtocolCounter = 1:size(Protocols,2)
         figure
-            subplot(221)
-                imshow(Details(ProtocolCounter).RecTif,[]);
-                title([ 'Slice ' num2str(sprintf('%04d',Slice)) ' of Protocol ' Protocols(ProtocolCounter) ])
-            subplot(222)
-                imshow(Details(ProtocolCounter).ThresholdedSlice,[]);
-                title([ 'Thresholded with ' num2str(Details(ProtocolCounter).Threshold * intmax(class(Details(ProtocolCounter).RecTif)))])
-            subplot(223)
-                imshow(Details(ProtocolCounter).DiffImg,[]);
-                title([ 'Difference Image to Protocol ' Protocols(1) ])
-            subplot(224)
+        for ProtocolCounter = 1:size(Protocols,2)
+            subplot(1,size(Protocols,2),ProtocolCounter)
                 imshow(Details(ProtocolCounter).SSIMMap,[]);
-                title([ 'SSIM = ' num2str(Details(ProtocolCounter).SSIM) ])
-    end
-
-    figure
-    for ProtocolCounter = 1:size(Protocols,2)
-        subplot(1,size(Protocols,2),ProtocolCounter)
-            imshow(Details(ProtocolCounter).SSIMMap,[]);
-            title([ 'SSIM(' Protocols(ProtocolCounter) ')=' num2str(Details(ProtocolCounter).SSIM) ])
+                title([ 'SSIM(' Protocols(ProtocolCounter) ')=' num2str(Details(ProtocolCounter).SSIM) ])
+        end
+    else
     end
 
     for ProtocolCounter = 1:size(Protocols,2)
-        disp([ 'SSIM(' Protocols(ProtocolCounter) ')=' num2str(Details(ProtocolCounter).SSIM) ]);
+        disp([ 'SSIM(' Protocols(ProtocolCounter) ',' num2str(Slice) ')=' ...
+            num2str(Details(ProtocolCounter).SSIM) ]);
     end
     
     disp('---');
@@ -101,36 +102,89 @@ for Slice = SlicesToDo
     SliceCounter = SliceCounter + 1;
 end
 
-% xlswrite idea from http://is.gd/xqTc
-ErrorFile = [ FilePath filesep 'ImgError-' BeamTime '.xls' ];
-disp([ 'Writing ImgError to ' ErrorFile ])
-xlswrite(ErrorFile, {'Slices'},'Sheet1','B1');
-xlswrite(ErrorFile, {'Protocols'},'Sheet1','A2');
-xlswrite(ErrorFile, [SlicesToDo],'Sheet1','B2');
-xlswrite(ErrorFile, num2cell(ImgError),'Sheet1','B3');
-xlswrite(ErrorFile, [Protocols]','Sheet1','A3');
+ErrorFile = [ FilePath filesep 'ImgError-' BeamTime '.xls']; % writing to .xls in both cases, so Excel can open it
+SSIMFile = [ FilePath filesep 'ImgSSIM-' BeamTime '.xls'];
 
-SSIMFile = [ FilePath filesep 'ImgSSIM-' BeamTime '.xls' ];
-disp([ 'Writing ImgError to ' SSIMFile ])
-xlswrite(SSIMFile, {'Slices'},'Sheet1','B1');
-xlswrite(SSIMFile, {'Protocols'},'Sheet1','A2');
-xlswrite(SSIMFile, [SlicesToDo],'Sheet1','B2');
-xlswrite(SSIMFile, num2cell(ImgSSIM),'Sheet1','B3');
-xlswrite(SSIMFile, [Protocols]','Sheet1','A3');
+if isunix == 1
+    % since 'xlswrite' does not work on Unix, we're resorting to a "hack",
+    % cobble together the matrix and write it as comma-separated values,
+    % which Excel can open...
+    disp([ 'Writing ImgError to ' ErrorFile ])
+    ExportTable(1)=NaN;
+    ExportTable(1,2:length(SlicesToDo)+1)=SlicesToDo;
+	ExportTable(2:size(ImgError,1)+1,2:size(ImgError,2)+1)=ImgError;
+    ExportTable(2:1+length(Protocols),1)=Protocols';
+    dlmwrite(ErrorFile,ExportTable);
+	dlmwrite(ErrorFile,'---','delimiter','','-append')
+    dlmwrite(ErrorFile,...
+        'The values in the First Row correspond to the ASCII-values of the ProtocolName.',...
+        'delimiter','','-append')
+    dlmwrite(ErrorFile,'65=A,66=B,67=C,etc.','delimiter','','-append')
+    
+    disp([ 'Writing ImgSSIM to ' SSIMFile ])
+    ExportTable(1)=NaN;
+    ExportTable(1,2:length(SlicesToDo)+1)=SlicesToDo;
+	ExportTable(2:size(ImgSSIM,1)+1,2:size(ImgSSIM,2)+1)=ImgSSIM;
+    ExportTable(2:1+length(Protocols),1)=Protocols';
+    dlmwrite(SSIMFile,ExportTable);
+	dlmwrite(SSIMFile,'---','delimiter','','-append')
+    dlmwrite(SSIMFile,...
+        'The values in the First Row correspond to the ASCII-values of the ProtocolName.',...
+        'delimiter','','-append')
+    dlmwrite(SSIMFile,'65=A,66=B,67=C,etc.','delimiter','','-append')
+else
+    % xlswrite idea from http://is.gd/xqTc
+    disp([ 'Writing ImgError to ' ErrorFile ])
+    xlswrite(ErrorFile, {'Slices'},'Sheet1','B1');
+    xlswrite(ErrorFile, {'Protocols'},'Sheet1','A2');
+    xlswrite(ErrorFile, [SlicesToDo],'Sheet1','B2');
+    xlswrite(ErrorFile, num2cell(ImgError),'Sheet1','B3');
+    xlswrite(ErrorFile, [Protocols]','Sheet1','A3');
+
+    disp([ 'Writing ImgSSIM to ' SSIMFile ])
+    xlswrite(SSIMFile, {'Slices'},'Sheet1','B1');
+    xlswrite(SSIMFile, {'Protocols'},'Sheet1','A2');
+    xlswrite(SSIMFile, [SlicesToDo],'Sheet1','B2');
+    xlswrite(SSIMFile, num2cell(ImgSSIM),'Sheet1','B3');
+    xlswrite(SSIMFile, [Protocols]','Sheet1','A3');
+end
 
 figure
-    plot(ImgError(:,2:end))
-	title([ 'ImgError for ' num2str(length(SlicesToDo-1)) ' Slices (First Slice is empty, thus omitted).' ])
-    xlabel('Protocols')
-    ylabel('\Sigma \Sigma DiffImg')
-    set(gca,'XTick',[1:length(Protocols)])
-    set(gca,'XTickLabel',rot90(fliplr(Protocols)))
-figure;plot(ImgSSIM)
-	title([ 'SSIM for ' num2str(length(SlicesToDo)) ' Slices' ])
-    xlabel('Protocols')
-    ylabel('SSIM')
-    set(gca,'XTick',[1:length(Protocols)])
-    set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+    subplot(221)
+        plot(ImgError)
+        title([ 'ImgError for ' num2str(length(SlicesToDo-1)) ' Slices'])% (First Slice is empty, thus omitted).' ])
+        xlabel('Protocols')
+        ylabel('\Sigma \Sigma DiffImg')
+        set(gca,'XTick',[1:length(Protocols)])
+        set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+%figure
+	subplot(222)
+        errorplot=mean(ImgError,2);
+        errorstddev=std(ImgError,0,2);
+        errorbar(errorplot,errorstddev)
+        title([ 'mean SSIM for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
+        xlabel('Protocols')
+        ylabel('SSIM')
+        set(gca,'XTick',[1:length(Protocols)])
+        set(gca,'XTickLabel',rot90(fliplr(Protocols)))   
+%figure
+    subplot(223)
+        plot(ImgSSIM)
+        title([ 'SSIM for ' num2str(length(SlicesToDo)) ' Slices' ])
+        xlabel('Protocols')
+        ylabel('SSIM')
+        set(gca,'XTick',[1:length(Protocols)])
+        set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+%figure       
+     subplot(224)
+        ssimplot=mean(ImgSSIM,2);
+        ssimstddev=std(ImgSSIM,0,2);
+        errorbar(ssimplot,ssimstddev);
+        title([ 'mean SSIM for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
+        xlabel('Protocols')
+        ylabel('SSIM')
+        set(gca,'XTick',[1:length(Protocols)])
+        set(gca,'XTickLabel',rot90(fliplr(Protocols)))   
 
 disp('---');    
 disp('Finished with everything you asked for.');
