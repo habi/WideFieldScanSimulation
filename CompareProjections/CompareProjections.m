@@ -1,18 +1,28 @@
 clear all;close all;clc;
 warning off Images:initSize:adjustingMag;
 
-BeamTime = '2008c';
-Protocols = ['b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t'];
-SamplePrefix = 'R108C21C';
-recFolder = 'rec_8bit';
+% BeamTime = '2008c';
+% Protocols = [{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},...
+%     {'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'}];
+% SamplePrefix = 'R108C21C';
+% recFolder = 'rec_8bit';
 
 % BeamTime = '2009a';
-% Protocols = ['a','b','c','d','e','f','g','h'];
+% Protocols = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'}];
 % SamplePrefix = 'R108C36C';
 % recFolder = 'rec_8bit';
 
+BeamTime = '2009b';
+Protocols = [ ...
+    {'A'},{'Aa'},{'Ab'},{'Ac'}, ...
+    {'B'},{'Ba'},{'Bb'},{'Bc'}, ...
+    {'C'},{'Ca'},{'Cb'},{'Cc'}, ...
+    {'D'},{'Da'},{'Db'},{'Dc'}];
+SamplePrefix = 'R108C36B';
+recFolder = 'rec_8bit_';
+
 % BeamTime = '2009c';
-% Protocols = ['A','B','C','D','E'];
+% Protocols = [{'A'},{'B'},{'C'},{'D'},{'E'}];
 % SamplePrefix = 'R108C60B_t';
 % recFolder = 'rec_8bit_';
 
@@ -35,40 +45,41 @@ end
 FilePath = fullfile(whereamI, PathToFiles);
     
 %% setup
-ResizeSize = 2048;
+ResizeSize = 256;
 showFigures = 1;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
-SlicesToDo = [1010:10:1024];
+SlicesToDo = [1:100:300];
 for Slice = SlicesToDo
     for ProtocolCounter = 1:size(Protocols,2)
-        disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ]);
+        disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' num2str(cell2mat(Protocols(ProtocolCounter))) ]);
             if BeamTime == '2008c'
-                CurrentSample = [ SamplePrefix Protocols(ProtocolCounter) '_mrg' ];
+                CurrentSample = [ SamplePrefix num2str(cell2mat(Protocols(ProtocolCounter))) '_mrg' ];
             else
-                CurrentSample = [ SamplePrefix '-' Protocols(ProtocolCounter) '-mrg' ];
+                CurrentSample = [ SamplePrefix '-' num2str(cell2mat(Protocols(ProtocolCounter))) '-mrg' ];
             end
             FileName = [ FilePath filesep CurrentSample filesep recFolder filesep ...
                 CurrentSample num2str(sprintf('%04d',Slice)) '.rec.8bit.tif' ];
-        disp('Reading...');
+        disp(['Reading ' FileName]);
             Details(ProtocolCounter).RecTif = imread(FileName);
             if BeamTime == '2008c'
                 disp('Sice @ Beamtime 2008c all shaved slices have different size, we`re resizing them to [952 2712]');
                 Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[952 2712]);
             end
-        disp([ 'Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ...
+        disp(cell2mat([ 'Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ...
             ' has a size of ' num2str(size(Details(ProtocolCounter).RecTif,1)) 'x' ...
-            num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.' ]);
-        disp(['Resizing to ' num2str(ResizeSize) 'px for thelongest side.']);
+            num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.' ]));
+        disp(['Resizing to ' num2str(ResizeSize) ' px for the longest side.']);
             Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[ NaN ResizeSize ]);
         disp('Calculating Otsu Threshold and Thresholding Image...')
             Details(ProtocolCounter).Threshold = graythresh(Details(ProtocolCounter).RecTif);
             Details(ProtocolCounter).ThresholdedSlice = ...
                 im2bw(Details(ProtocolCounter).RecTif,Details(ProtocolCounter).Threshold);
-        disp(['Threshold is ' num2str(Details(ProtocolCounter).Threshold ...
-            * intmax(class(Details(ProtocolCounter).RecTif))) ]);
-        disp([ 'Calculating Difference Image to Protocol ' Protocols(1) ])
+            Details(ProtocolCounter).Threshold = Details(ProtocolCounter).Threshold * ...
+                intmax(class(Details(ProtocolCounter).RecTif)); % save Threshold with 8 or 16 bit into .Threshold
+        disp(['Threshold is ' num2str(Details(ProtocolCounter).Threshold) ]);
+        disp(cell2mat([ 'Calculating Difference Image to Protocol ' Protocols(1) ]))
             Details(ProtocolCounter).DiffImg = imabsdiff( ...
                 Details(ProtocolCounter).ThresholdedSlice,Details(1).ThresholdedSlice);
             Details(ProtocolCounter).DiffImg = imabsdiff(Details(ProtocolCounter).ThresholdedSlice,Details(1).ThresholdedSlice);
@@ -90,7 +101,7 @@ for Slice = SlicesToDo
                     title([ 'Slice ' num2str(sprintf('%04d',Slice)) ' of Protocol ' Protocols(ProtocolCounter) ])
                 subplot(222)
                     imshow(Details(ProtocolCounter).ThresholdedSlice,[]);
-                    title([ 'Thresholded with ' num2str(Details(ProtocolCounter).Threshold * intmax(class(Details(ProtocolCounter).RecTif)))])
+                    title([ 'Thresholded with ' num2str(Details(ProtocolCounter).Threshold) ])
                 subplot(223)
                     imshow(Details(ProtocolCounter).DiffImg,[]);
                     title([ 'Difference Image to Protocol ' Protocols(1) ])
@@ -108,9 +119,17 @@ for Slice = SlicesToDo
     else
     end
 
+	for ProtocolCounter = 1:size(Protocols,2)
+        disp(cell2mat([ 'Threshold(' Protocols(ProtocolCounter) ',' num2str(Slice) ')=' ...
+            num2str(Details(ProtocolCounter).Threshold) ]));
+    end
+	for ProtocolCounter = 1:size(Protocols,2)
+        disp(cell2mat([ 'Error(' Protocols(ProtocolCounter) ',' num2str(Slice) ')=' ...
+            num2str(Details(ProtocolCounter).Error) ]));
+    end
     for ProtocolCounter = 1:size(Protocols,2)
-        disp([ 'SSIM(' Protocols(ProtocolCounter) ',' num2str(Slice) ')=' ...
-            num2str(Details(ProtocolCounter).SSIM) ]);
+        disp(cell2mat([ 'SSIM(' Protocols(ProtocolCounter) ',' num2str(Slice) ')=' ...
+            num2str(Details(ProtocolCounter).SSIM) ]));
     end
     
     disp('---');

@@ -1,10 +1,14 @@
 clear all;close all;clc;
 warning off Images:initSize:adjustingMag;
 
-BeamTime = '2009c';
-Protocols = ['A','B','C','D','E'];
-%Protocols = [ Protocols(1:3) Protocols(5:8) ]
-SamplePrefix = 'R108C60B_t';
+BeamTime = '2009b';
+Protocols = [{'A'},{'Aa'},{'Ab'},{'Ac'},...
+            {'B'},{'Ba'},{'Bb'},{'Bc'},...
+            {'C'},{'Ca'},{'Cb'},{'Cc'},...
+            {'D'},{'Da'},{'Db'},{'Dc'}];
+Protocols = [ Protocols(1:4:end)]
+% Protocols = Protocols(round(16*rand))
+SamplePrefix = 'R108C36B';
 
 if isunix == 1 
     UserID = 'e11126';
@@ -25,23 +29,23 @@ end
 FilePath = fullfile(whereamI, PathToFiles);
     
 %% setup
-ResizeSize = 2049;
-showFigures = 0;
+ResizeSize = 512;
+showFigures = 1;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
-SlicesToDo = [501:10:550]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
+SlicesToDo = [101:30:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
 for Slice = SlicesToDo
     for ProtocolCounter = 1:size(Protocols,2)
-        disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ]);
-            CurrentSample = [ SamplePrefix '-' Protocols(ProtocolCounter) '-mrg' ];
+        disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' cell2mat(Protocols(ProtocolCounter)) ]);
+            CurrentSample = cell2mat([ SamplePrefix '-' Protocols(ProtocolCounter) '-mrg' ]);
             FileName = [ FilePath filesep CurrentSample filesep 'rec_8bit_' filesep ...
                 CurrentSample num2str(sprintf('%04d',Slice)) '.rec.8bit.tif' ];
         disp('Reading...');
             Details(ProtocolCounter).RecTif = imread(FileName);
-        disp([ 'Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ...
+        disp(cell2mat([ 'Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ...
             ' has a size of ' num2str(size(Details(ProtocolCounter).RecTif,1)) 'x' ...
-            num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.' ]);
+            num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.' ]));
         disp(['Resizing to ' num2str(ResizeSize) 'x' num2str(ResizeSize) ' px.']);
             Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[ResizeSize NaN]);
         disp('Calculating Otsu Threshold and Thresholding Image...')
@@ -50,7 +54,7 @@ for Slice = SlicesToDo
                 im2bw(Details(ProtocolCounter).RecTif,Details(ProtocolCounter).Threshold);
         disp(['Threshold is ' num2str(Details(ProtocolCounter).Threshold ...
             * intmax(class(Details(ProtocolCounter).RecTif))) ]);
-        disp([ 'Calculating Difference Image to Protocol ' Protocols(1) ])
+        disp(cell2mat(['Calculating Difference Image to Protocol ' Protocols(1) ]));
             Details(ProtocolCounter).DiffImg = imabsdiff( ...
                 imresize(Details(ProtocolCounter).ThresholdedSlice,[1024 NaN]), ...
                 imresize(Details(1).ThresholdedSlice,[1024 NaN]) ...
@@ -93,8 +97,8 @@ for Slice = SlicesToDo
     end
 
     for ProtocolCounter = 1:size(Protocols,2)
-        disp([ 'SSIM(' Protocols(ProtocolCounter) ',' num2str(Slice) ')=' ...
-            num2str(Details(ProtocolCounter).SSIM) ]);
+        disp(cell2mat([ 'SSIM(' Protocols(ProtocolCounter) ',' num2str(Slice) ')=' ...
+            num2str(Details(ProtocolCounter).SSIM) ]));
     end
     
     disp('---');
@@ -157,6 +161,7 @@ figure
         ylabel('\Sigma \Sigma DiffImg')
         set(gca,'XTick',[1:length(Protocols)])
         set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+        legend(num2str(SlicesToDo'),'Location','BestOutside')
 %figure
 	subplot(222)
         errorplot=mean(ImgError,2);
@@ -175,6 +180,7 @@ figure
         ylabel('SSIM')
         set(gca,'XTick',[1:length(Protocols)])
         set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+        legend(num2str(SlicesToDo'),'Location','BestOutside')
 %figure       
      subplot(224)
         ssimplot=mean(ImgSSIM,2);
