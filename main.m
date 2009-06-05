@@ -10,7 +10,7 @@ clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
 if isunix
     addpath('/sls/X02DA/data/e11126/MATLAB/matlab2tikz');
 else
-    addpath('P:\doc\MATLAB\matlab2tikz');
+    addpath('P:\MATLAB\matlab2tikz');
 end
 
 printit = 0;
@@ -46,8 +46,8 @@ Defaults={...
     '2',...     % 2
     '10',...    % 3
     '100',...   % 4
-    '90',...    % 5
-    '60',...    % 6
+    '125',...   % 5
+    '20',...    % 6
     '100',...   % 7
     '10',...     % 8
     '150',...   % 9
@@ -200,7 +200,7 @@ figure
         matlab2tikz(filename);
     end
     
-FitFactor = 5;
+FitFactor = 2;
 figure
     ScanningTime = TotalProjectionsPerProtocol * ExposureTime / 1000 / 60;
     % Calculate fit parameters

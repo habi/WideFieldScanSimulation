@@ -1,25 +1,25 @@
 clear all;close all;clc;
 warning off Images:initSize:adjustingMag;
 
-% BeamTime = '2008c';
-% Protocols = [{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},...
-%     {'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'}];
-% SamplePrefix = 'R108C21C';
-% recFolder = 'rec_8bit';
+BeamTime = '2008c';
+Protocols = [{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},...
+    {'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'}];
+SamplePrefix = 'R108C21C';
+recFolder = 'rec_8bit';
 
 % BeamTime = '2009a';
 % Protocols = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'}];
 % SamplePrefix = 'R108C36C';
 % recFolder = 'rec_8bit';
 
-BeamTime = '2009b';
-Protocols = [ ...
-    {'A'},{'Aa'},{'Ab'},{'Ac'}, ...
-    {'B'},{'Ba'},{'Bb'},{'Bc'}, ...
-    {'C'},{'Ca'},{'Cb'},{'Cc'}, ...
-    {'D'},{'Da'},{'Db'},{'Dc'}];
-SamplePrefix = 'R108C36B';
-recFolder = 'rec_8bit_';
+% BeamTime = '2009b';
+% Protocols = [ ...
+%     {'A'},{'Aa'},{'Ab'},{'Ac'}, ...
+%     {'B'},{'Ba'},{'Bb'},{'Bc'}, ...
+%     {'C'},{'Ca'},{'Cb'},{'Cc'}, ...
+%     {'D'},{'Da'},{'Db'},{'Dc'}];
+% SamplePrefix = 'R108C36B';
+% recFolder = 'rec_8bit_';
 
 % BeamTime = '2009c';
 % Protocols = [{'A'},{'B'},{'C'},{'D'},{'E'}];
@@ -38,20 +38,21 @@ if isunix == 1
 else
     whereamI = 'S:';
     PathToFiles = [ 'SLS' filesep BeamTime filesep 'mrg' ];
-    addpath('P:\doc\MATLAB')
-    addpath('P:\doc\MATLAB\SRuCT')
+    addpath('P:\MATLAB')
+    addpath('P:\MATLAB\SRuCT')
 end
 
 FilePath = fullfile(whereamI, PathToFiles);
     
 %% setup
-ResizeSize = 256;
-showFigures = 1;
+ResizeSize = 1; % "1" = don't resize!
+showFigures = 0;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
-SlicesToDo = [1:100:300];
+SlicesToDo = [512:50:1024];
 for Slice = SlicesToDo
+    close all;
     for ProtocolCounter = 1:size(Protocols,2)
         disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' num2str(cell2mat(Protocols(ProtocolCounter))) ]);
             if BeamTime == '2008c'
@@ -64,14 +65,21 @@ for Slice = SlicesToDo
         disp(['Reading ' FileName]);
             Details(ProtocolCounter).RecTif = imread(FileName);
             if BeamTime == '2008c'
-                disp('Sice @ Beamtime 2008c all shaved slices have different size, we`re resizing them to [952 2712]');
+                disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                disp('!!! Sice @ Beamtime 2008c all shaved slices have different size, we`re resizing them to [952 2712] !!!');
+                disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
                 Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[952 2712]);
+
             end
         disp(cell2mat([ 'Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ...
             ' has a size of ' num2str(size(Details(ProtocolCounter).RecTif,1)) 'x' ...
             num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.' ]));
-        disp(['Resizing to ' num2str(ResizeSize) ' px for the longest side.']);
-            Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[ NaN ResizeSize ]);
+        if ResizeSize ~= 1
+            disp(['Resizing to ' num2str(ResizeSize) ' px for the long side to speed up calculations.']);
+                Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[ NaN ResizeSize ]);
+            disp(['Image Size is now ' num2str(size(Details(ProtocolCounter).RecTif,1)) ...
+                'x' num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.']);
+        end
         disp('Calculating Otsu Threshold and Thresholding Image...')
             Details(ProtocolCounter).Threshold = graythresh(Details(ProtocolCounter).RecTif);
             Details(ProtocolCounter).ThresholdedSlice = ...
@@ -85,9 +93,14 @@ for Slice = SlicesToDo
             Details(ProtocolCounter).DiffImg = imabsdiff(Details(ProtocolCounter).ThresholdedSlice,Details(1).ThresholdedSlice);
         disp('Calculating the Sum over the Difference Image as an Error-Measure')
             Details(ProtocolCounter).Error = sum( sum( Details(ProtocolCounter).DiffImg ) );      
-        disp('Calculating SSIM-Index')
-            [ Details(ProtocolCounter).SSIM Details(ProtocolCounter).SSIMMap ] = ...
-                ssim_index(Details(1).RecTif,Details(ProtocolCounter).RecTif);
+        disp(cell2mat(['Calculating SSIM-Map and -Index of Protocol ' Protocols(ProtocolCounter) ...
+            ' with Protocol ' Protocols(1) ]));
+            %%ORIGINALS%%
+             [ Details(ProtocolCounter).SSIM Details(ProtocolCounter).SSIMMap ] = ...
+                 ssim_index(Details(1).RecTif,Details(ProtocolCounter).RecTif);
+            %%THRESHOLDED%%
+%             [ Details(ProtocolCounter).SSIM Details(ProtocolCounter).SSIMMap ] = ...
+%                 ssim_index(Details(1).ThresholdedSlice,Details(ProtocolCounter).ThresholdedSlice);
         disp('---')
         ImgError(ProtocolCounter,SliceCounter) = Details(ProtocolCounter).Error;
     	ImgSSIM(ProtocolCounter,SliceCounter) = Details(ProtocolCounter).SSIM;
@@ -98,23 +111,28 @@ for Slice = SlicesToDo
             figure
                 subplot(221)
                     imshow(Details(ProtocolCounter).RecTif,[]);
-                    title([ 'Slice ' num2str(sprintf('%04d',Slice)) ' of Protocol ' Protocols(ProtocolCounter) ])
+                    title(cell2mat([ 'Slice ' num2str(sprintf('%04d',Slice)) ...
+                        ' of Protocol ' Protocols(ProtocolCounter) ]))
                 subplot(222)
                     imshow(Details(ProtocolCounter).ThresholdedSlice,[]);
                     title([ 'Thresholded with ' num2str(Details(ProtocolCounter).Threshold) ])
                 subplot(223)
                     imshow(Details(ProtocolCounter).DiffImg,[]);
-                    title([ 'Difference Image to Protocol ' Protocols(1) ])
+                    title(cell2mat([ 'Difference Image to Protocol ' ...
+                        Protocols(1) ]))
                 subplot(224)
                     imshow(Details(ProtocolCounter).SSIMMap,[]);
-                    title([ 'SSIM = ' num2str(Details(ProtocolCounter).SSIM) ])
+                    title(cell2mat([ 'SSIM-Map(Prot(' Protocols(ProtocolCounter) ...
+                        '-' Protocols(1) ')), SSIM = ' ...
+                        num2str(Details(ProtocolCounter).SSIM) ]))
         end
 
         figure
         for ProtocolCounter = 1:size(Protocols,2)
             subplot(1,size(Protocols,2),ProtocolCounter)
                 imshow(Details(ProtocolCounter).SSIMMap,[]);
-                title([ 'SSIM(' Protocols(ProtocolCounter) ')=' num2str(Details(ProtocolCounter).SSIM) ])
+                title(cell2mat([ 'SSIM(' Protocols(ProtocolCounter) ')=' ...
+                    num2str(Details(ProtocolCounter).SSIM) ]))
         end
     else
     end
@@ -133,7 +151,6 @@ for Slice = SlicesToDo
     end
     
     disp('---');
-    close all;
     SliceCounter = SliceCounter + 1;
 end
 
@@ -192,16 +209,17 @@ figure
         ylabel('\Sigma \Sigma DiffImg')
         set(gca,'XTick',[1:length(Protocols)])
         set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+        legend(num2str(SlicesToDo'),'Location','Best') % or 'BestOutside'
 %figure
 	subplot(222)
-        errorplot=mean(ImgError,2);
-        errorstddev=std(ImgError,0,2);
+        errorplot=mean(ImgError');
+        errorstddev=std(ImgError');
         errorbar(errorplot,errorstddev)
-        title([ 'mean SSIM for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
+        title([ 'mean Error for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
         xlabel('Protocols')
-        ylabel('SSIM')
+        ylabel('mean \Sigma \Sigma DiffImg')
         set(gca,'XTick',[1:length(Protocols)])
-        set(gca,'XTickLabel',rot90(fliplr(Protocols)))   
+        set(gca,'XTickLabel',rot90(fliplr(Protocols)))
 %figure
     subplot(223)
         plot(ImgSSIM)
@@ -210,6 +228,7 @@ figure
         ylabel('SSIM')
         set(gca,'XTick',[1:length(Protocols)])
         set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+        legend(num2str(SlicesToDo'),'Location','Best') % or 'BestOutside'
 %figure       
      subplot(224)
         ssimplot=mean(ImgSSIM,2);
@@ -217,9 +236,9 @@ figure
         errorbar(ssimplot,ssimstddev);
         title([ 'mean SSIM for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
         xlabel('Protocols')
-        ylabel('SSIM')
+        ylabel('mean SSIM')
         set(gca,'XTick',[1:length(Protocols)])
-        set(gca,'XTickLabel',rot90(fliplr(Protocols)))   
+        set(gca,'XTickLabel',rot90(fliplr(Protocols)))
 
 disp('---');    
 disp('Finished with everything you asked for.');

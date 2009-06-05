@@ -1,10 +1,10 @@
 clear all;close all;clc;
 warning off Images:initSize:adjustingMag;
 
-BeamTime = '2009c';
-Protocols = ['A','B','C','D','E'];
-%Protocols = [ Protocols(1:3) Protocols(5:8) ]
-SamplePrefix = 'R108C60B_t';
+BeamTime = '2008c';
+Protocols = ['b','c','d','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t'];
+% Protocols = [ Protocols(1:4:end)]
+SamplePrefix = 'R108C21C';
 
 if isunix == 1 
     UserID = 'e11126';
@@ -25,17 +25,17 @@ end
 FilePath = fullfile(whereamI, PathToFiles);
     
 %% setup
-ResizeSize = 1024;
+ResizeSize = 950; % 1024 is too big > need to get full images or even reconstruct new!
 showFigures = 0;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
-SlicesToDo = [101:400:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
+SlicesToDo = [256:64:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
 for Slice = SlicesToDo
     for ProtocolCounter = 1:size(Protocols,2)
         disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ]);
-            CurrentSample = [ SamplePrefix '-' Protocols(ProtocolCounter) '-mrg' ];
-            FileName = [ FilePath filesep CurrentSample filesep 'rec_8bit_' filesep ...
+            CurrentSample = [ SamplePrefix Protocols(ProtocolCounter) '_mrg' ];
+            FileName = [ FilePath filesep CurrentSample filesep 'rec_8bit' filesep ...
                 CurrentSample num2str(sprintf('%04d',Slice)) '.rec.8bit.tif' ];
         disp('Reading...');
             Details(ProtocolCounter).RecTif = imread(FileName);
@@ -43,14 +43,17 @@ for Slice = SlicesToDo
             ' has a size of ' num2str(size(Details(ProtocolCounter).RecTif,1)) 'x' ...
             num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.' ]);
         disp(['Resizing to ' num2str(ResizeSize) 'px. for the shortest side']);
-            Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[ResizeSize NaN]);
+            Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[NaN ResizeSize]);
         disp('Calculating Otsu Threshold and Thresholding Image...')
             Details(ProtocolCounter).Threshold = graythresh(Details(ProtocolCounter).RecTif);
             Details(ProtocolCounter).ThresholdedSlice = ...
                 im2bw(Details(ProtocolCounter).RecTif,Details(ProtocolCounter).Threshold);
+%%%%%%%%%%%%%%%%%%
+% Details(ProtocolCounter).ThresholdedSlice = Details(ProtocolCounter).RecTif;
+%%%%%%%%%%%%%%%%%%
         disp(['Threshold is ' num2str(Details(ProtocolCounter).Threshold ...
             * intmax(class(Details(ProtocolCounter).RecTif))) ]);
-        disp([ 'Calculating Difference Image to Protocol ' Protocols(1) ])
+        disp(['Calculating Difference Image to Protocol ' Protocols(1) ]);
             Details(ProtocolCounter).DiffImg = imabsdiff( ...
                 imresize(Details(ProtocolCounter).ThresholdedSlice,[1024 NaN]), ...
                 imresize(Details(1).ThresholdedSlice,[1024 NaN]) ...
@@ -157,6 +160,7 @@ figure
         ylabel('\Sigma \Sigma DiffImg')
         set(gca,'XTick',[1:length(Protocols)])
         set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+        legend(num2str(SlicesToDo'),'Location','BestOutside')
 %figure
 	subplot(222)
         errorplot=mean(ImgError,2);
@@ -175,6 +179,7 @@ figure
         ylabel('SSIM')
         set(gca,'XTick',[1:length(Protocols)])
         set(gca,'XTickLabel',rot90(fliplr(Protocols)))
+        legend(num2str(SlicesToDo'),'Location','BestOutside')
 %figure       
      subplot(224)
         ssimplot=mean(ImgSSIM,2);
