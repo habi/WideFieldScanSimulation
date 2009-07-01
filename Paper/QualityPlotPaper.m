@@ -7,6 +7,7 @@ clear; close all; clc;tic; disp(['It`s now ' datestr(now) ]);disp('-----');
 
 addpath('P:\MATLAB\matlab2tikz');
 addpath('P:\MATLAB\WideFieldScan\');
+cd('P:\MATLAB\WideFieldScan\Paper');
 
 printit = 1;
 printdir = [ pwd filesep 'SimulationOutput' ];
@@ -62,14 +63,14 @@ ExposureTime      = 125;  % Exposure Time, needed for Total Scan Time estimation
 MinimalQuality    = 20;  % minimal Quality for Simulation
 MaximalQuality    = 100;  % maximal Quality for Simulation     
 % QualityStepWidth  = str2num(UserInput{8});  % Quality StepWidth, generally 10%
-SimulationSize_px = 1024;  % DownSizing Factor for Simulation > for Speedup
+SimulationSize_px = 1000; %round(1000*rand);  % DownSizing Factor for Simulation > for Speedup
 % writeout          = str2num(UserInput{10}); % Do we write a PreferenceFile to disk at the end?
 % UserSampleName    = UserInput{11};          % SampleName For OutputFile, now without str2num, since it's already a string...
 
 % %% Calculations needed for progress
 pixelsize = 7.4 / Magnification * Binning; % makes Pixel Size [um] equal to second table on TOMCAT website (http://is.gd/citz)
 % 
-FOV_px = 3072%round( FOV_mm * 1000 / pixelsize); % mm -> um -> px
+FOV_px = 3072;%round( FOV_mm * 1000 / pixelsize); % mm -> um -> px
 DetectorWidth_px= 2048 / Binning;  % The camera is 2048 px wide > FOV scales with binning
 % 
 SegmentWidth_px = DetectorWidth_px - Overlap_px;

@@ -30,7 +30,7 @@ showFigures = 0;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
-SlicesToDo = [256:64:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
+SlicesToDo = [256:512:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
 for Slice = SlicesToDo
     for ProtocolCounter = 1:size(Protocols,2)
         disp([ 'Working on Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ]);
