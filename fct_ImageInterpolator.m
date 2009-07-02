@@ -3,8 +3,13 @@ function InterpolatedImages=fct_ImageInterpolator(ImageToInterpolate1,ImageToInt
 % interpolated between the two Input Images. This factor incluences the
 % grid distance of the meshgrid, which is used to calculate the
 % interpolation.
+% The output of the function is a stack of images with the first and the
+% last slice set as the two Input Images and the images inbetween with the
+% interpolated images, thus having a size of
+% x,y,InterpolateHowManyInbetween+2, where x and y are the size of the
+% input-images.
 
-InterpolatedImages = NaN;
+InterpolatedImages = [];
 
 if nargin ~= 3
     disp('The Image Interpolation function needs Two Images and the information on how many images')
@@ -12,28 +17,23 @@ if nargin ~= 3
     return
 end
 
-% third argument to flip the image ("1"). If the third argument is set, the
-% image is flipped prior to the interpolation, essentially interpolating
-% horizontally
-%     if InterpolateEveryXthLnie == 1
-%         OutputImage = InputImage;
-%         return
-%     end
-%     InterpolationDirection = 'vertical';
-%     if nargin > 2 && varargin{1}
-%         InterpolationDirection = 'horizontal';
-%         InputImage = InputImage';
-%     end
-%     disp(['interpolating in ' InterpolationDirection ' direction']);
-%     OutputImage=zeros(size(InputImage,1),size(InputImage,2)); % preallocate for MUCH faster execution
-%     i = 1:size(InputImage,2);
-%     OutputImage(:,i) = interp1(1:InterpolateEveryXthLnie:size(InputImage,1),...
-%         InputImage(1:InterpolateEveryXthLnie:size(InputImage,1),i),...
-%         1:size(InputImage,1),'linear','extrap');
-%     %OutputImageSize=size(OutputImage)
-%     if nargin > 2 && varargin{1}
-%         OutputImage = OutputImage';
-%     end
-% end
+if size(ImageToInterpolate1) ~= size(ImageToInterpolate2)
+    disp('The two input images need to be the same size, you provided different sizes!')
+    return
+end
 
+ImageStack(:,:,1) = double(ImageToInterpolate1);
+ImageStack(:,:,2) = double(ImageToInterpolate2);
+
+x=1:size(ImageToInterpolate1,1);
+y=1:size(ImageToInterpolate1,2);
+z=1:2;
+disp('Setting up the Interpolation.')
+[xi,yi,zi] = meshgrid(1:size(ImageToInterpolate1,1),...
+    1:size(ImageToInterpolate1,2),...
+    1:(1/(InterpolateHowManyInbetween+1)):2);
+disp(['Interpolating now. For ' num2str(InterpolateHowManyInbetween) ' interpolated image(s), this might take long...'])
+InterpolatedImages = interp3(x,y,z,ImageStack,xi,yi,zi);
+
+clear ImageStack
 end
