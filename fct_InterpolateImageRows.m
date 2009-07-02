@@ -1,4 +1,4 @@
-function OutputImage=fct_InterpolateImage(InputImage,InterpolateEveryXthLnie,varargin)
+function OutputImage=fct_InterpolateImageRows(InputImage,InterpolateEveryXthLnie,varargin)
 % function takes InputImage, LineNumberToInterpolate and an - optional -
 % third argument to flip the image ("1"). If the third argument is set, the
 % image is flipped prior to the interpolation, essentially interpolating

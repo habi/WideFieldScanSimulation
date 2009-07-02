@@ -13,7 +13,7 @@ function [AbsError, AverageError] = fct_ModelCalculation(Sinogram,DetectorWidth,
         disp(['interpolating SubScan ' num2str(SubScan) ]);
 %         startpos=SubScanStartPosition
 %         endpos=SubScanStartPosition+DetectorWidth-1
-        SubBlock = fct_InterpolateImage(Sinogram(SubScanStartPosition:SubScanStartPosition+DetectorWidth-1,:), ...
+        SubBlock = fct_InterpolateImageRows(Sinogram(SubScanStartPosition:SubScanStartPosition+DetectorWidth-1,:), ...
             round(SinogramHeight/ProtocolNumProj(SubScan)),1); % 1 > transponiert Bild
 %         SubBlockSize= size(SubBlock);
         ResultSinogram(SubScanStartPosition:SubScanStartPosition+DetectorWidth-1,:) = SubBlock;

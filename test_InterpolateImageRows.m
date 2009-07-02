@@ -1,6 +1,6 @@
 Image = phantom;
 
-InterpolatedImage=fct_InterpolateImage(Image,32,0);
+InterpolatedImage=fct_InterpolateImageRows(Image,32,0);
  
 figure;
     subplot(121)
