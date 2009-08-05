@@ -1,6 +1,6 @@
 function cutline = function_cutline(Image1,Image2)
-    Image1 = double(Image1);
-    Image2 = double(Image2);
+    Image1=double(Image1);
+    Image2=double(Image2);
     [ ImageHeight ImageWidth ] = size(Image1);
     GradientWidth = 2*ImageWidth-1;
     Gradient = zeros( 1,GradientWidth );
@@ -34,6 +34,8 @@ function cutline = function_cutline(Image1,Image2)
             Gradient(ImageWidth) = ( TempValue2 - TempValue1) * .5;
         end
     end
+%MinimumPosition
+%Minimum
 %     figure
 %         subplot(211)
 %             plot([1:GradientWidth],Gradient)

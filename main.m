@@ -18,22 +18,22 @@ printdir = [ pwd filesep 'SimulationOutput' ];
 [status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
 writeas = '-dpng';
 
-writeall = 1; % shall we write all protocols to disk or just the selected?
-
 %% User input and value extraction
 % User Input is done via an Input Dialog (inputdlg)
 InputDialog={...
     'FOV [mm]',...              % 1
     'Binning',...               % 2
     'Magnification',...         % 3
-    'Overlap [px]',...          % 4
-    'Exposure Time [ms]',...    % 5
+	'Exposure Time [ms]',...    % 4
+    'Overlap [px]',...          % 5
     'Minimal Quality [%]',...   % 6
     'Maximal Quality [%]',...   % 7
     'Quality Stepwitdh [%]',... % 8
     'SimulationSize [px] (512 or 1024 is a sensible choice...)',... % 9
     'Write a file with the final details to disk? (1=y,0=n)',...    % 10
-    'Sample Name (leave it empty and I`ll ask you later on...)',... % 11
+    'Write ALL protocols or just ONE protocol to disk. (1=write all, 0=choose one and write this)',...    % 11
+    'Sample Name (leave it empty and I`ll ask you later on...)',... % 12
+    'BeamTime',...              % 13
     };
 
 % Setup of the Dialog Box
@@ -45,14 +45,16 @@ Defaults={...
     '4.1',...   % 1
     '2',...     % 2
     '10',...    % 3
-    '100',...   % 4
-    '125',...   % 5
+	'125',...   % 4
+    '100',...   % 5
     '20',...    % 6
     '100',...   % 7
-    '10',...     % 8
+    '10',...    % 8
     '150',...   % 9
     '1',...     % 10
-    '2009c-Batch',... % 11
+    '0',...     % 11
+    'R108C60Da',... % 12
+    '2009d',... % 13
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -62,14 +64,16 @@ UserInput=inputdlg(InputDialog,Name,NumLines,Defaults);
 FOV_mm            = str2num(UserInput{1});  % This is the FOV the user wants to achieve
 Binning           = str2num(UserInput{2});  % since the Camera is 2048px wide, the binning influences the DetectorWidth
 Magnification     = str2num(UserInput{3});  % Magn. and Binning influence the pixelsize
-Overlap_px        = str2num(UserInput{4});  % Overlap between the SubScans, needed for merging
-ExposureTime      = str2num(UserInput{5});  % Exposure Time, needed for Total Scan Time estimation
+ExposureTime      = str2num(UserInput{4});  % Exposure Time, needed for Total Scan Time estimation
+Overlap_px        = str2num(UserInput{5});  % Overlap between the SubScans, needed for merging
 MinimalQuality    = str2num(UserInput{6});  % minimal Quality for Simulation
 MaximalQuality    = str2num(UserInput{7});  % maximal Quality for Simulation     
 QualityStepWidth  = str2num(UserInput{8});  % Quality StepWidth, generally 10%
 SimulationSize_px = str2num(UserInput{9});  % DownSizing Factor for Simulation > for Speedup
 writeout          = str2num(UserInput{10}); % Do we write a PreferenceFile to disk at the end?
-UserSampleName    = UserInput{11};          % SampleName For OutputFile, now without str2num, since it's already a string...
+writeall          = str2num(UserInput{11}); % write all protocols or let the user choose one?
+UserSampleName    = UserInput{12};          % SampleName For OutputFile, now without str2num, since it's already a string...
+Beamtime          = UserInput{13};          % Beamtime-Name, used for the path for writing the preference-file
 
 %% Calculations needed for progress
 pixelsize = 7.4 / Magnification * Binning; % makes Pixel Size [um] equal to second table on TOMCAT website (http://is.gd/citz)
@@ -109,7 +113,8 @@ figure
     xlabel('Protocol')
     ylabel('Total NumProj')
     set(gca,'XTick',[1:AmountOfProtocols])
-    set(gca,'XTickLabel',SortIndex)    
+    set(gca,'XTickLabel',SortIndex)
+    grid on;
     if printit == 1
         File = [ 'TotalProjectionsPlot' ];
         filename = [ printdir filesep File ];
@@ -224,53 +229,53 @@ figure
         matlab2tikz(filename);
     end
  
-figure
-    plot(ScanningTime(SortIndex),Quality(SortIndex),'-o');
-    xlabel(['estimated Scanning Time [min]']);
-    ylim([0 120]) 
-    ylabel('Expected Quality of the Scan [%]');
-    grid on;
-    title('Quality plotted vs. sorted Total Number of Projections');
-    if printit == 1
-        File = [ num2str(ModelSize) 'px-Plot-QualityVsScanningTime' ];
-        filename = [ printdir filesep File ];
-        print(writeas, filename);        
-        filename = [ filename '.tex' ];
-        matlab2tikz(filename); 
-    end
-    
-figure
-    plot(SortIndex,Quality(SortIndex),'o');
-    xlabel(['Total Proj']);
-    ylabel('Quality')
-    ylim([0 120]) 
-    title('Quality plotted vs. Total Proj.');
-    interval = 4;
-    set(gca,'XTick',[1:interval:AmountOfProtocols])
-    set(gca,'XTickLabel',TotalProjectionsPerProtocol(1:interval:end))
-    if printit == 1
-        File = [ num2str(ModelSize) 'px-Plot-QualityVsTotalProjections' ];
-        filename = [ printdir filesep File ];
-        print(writeas, filename);        
-        filename = [ filename '.tex' ];
-        matlab2tikz(filename);
-    end 
-
-figure
-    plot(fliplr(SortIndex),Quality(SortIndex),'o');
-    xlabel('Protocol')
-    ylabel('Quality')
-    ylim([0 120]) 
-    title('Quality plotted vs. Protocol Number');
-    set(gca,'XTick',[1:AmountOfProtocols])
-    set(gca,'XTickLabel',34-SortIndex)
-    if printit == 1
-        File = [ num2str(ModelSize) 'px-Plot-QualityVsProtocols' ];
-        filename = [ printdir filesep File ];
-        print(writeas, filename);        
-        filename = [ filename '.tex' ];
-        matlab2tikz(filename);
-    end    
+% figure
+%     plot(ScanningTime(SortIndex),Quality(SortIndex),'-o');
+%     xlabel(['estimated Scanning Time [min]']);
+%     ylim([0 120]) 
+%     ylabel('Expected Quality of the Scan [%]');
+%     grid on;
+%     title('Quality plotted vs. sorted Total Number of Projections');
+%     if printit == 1
+%         File = [ num2str(ModelSize) 'px-Plot-QualityVsScanningTime' ];
+%         filename = [ printdir filesep File ];
+%         print(writeas, filename);        
+%         filename = [ filename '.tex' ];
+%         matlab2tikz(filename); 
+%     end
+%     
+% figure
+%     plot(SortIndex,Quality(SortIndex),'o');
+%     xlabel(['Total Proj']);
+%     ylabel('Quality')
+%     ylim([0 120]) 
+%     title('Quality plotted vs. Total Proj.');
+%     interval = 4;
+%     set(gca,'XTick',[1:interval:AmountOfProtocols])
+%     set(gca,'XTickLabel',TotalProjectionsPerProtocol(1:interval:end))
+%     if printit == 1
+%         File = [ num2str(ModelSize) 'px-Plot-QualityVsTotalProjections' ];
+%         filename = [ printdir filesep File ];
+%         print(writeas, filename);        
+%         filename = [ filename '.tex' ];
+%         matlab2tikz(filename);
+%     end 
+% 
+% figure
+%     plot(fliplr(SortIndex),Quality(SortIndex),'o');
+%     xlabel('Protocol')
+%     ylabel('Quality')
+%     ylim([0 120]) 
+%     title('Quality plotted vs. Protocol Number');
+%     set(gca,'XTick',[1:AmountOfProtocols])
+%     set(gca,'XTickLabel',34-SortIndex)
+%     if printit == 1
+%         File = [ num2str(ModelSize) 'px-Plot-QualityVsProtocols' ];
+%         filename = [ printdir filesep File ];
+%         print(writeas, filename);        
+%         filename = [ filename '.tex' ];
+%         matlab2tikz(filename);
+%     end    
 
 if writeall == 0    
     %% Let the user choose a protocol
@@ -291,7 +296,12 @@ end
 if writeout == 1
     % Hardcode path
 %        UserPath = printdir;
-         UserPath = '/sls/X02DA/Data10/e11126/2009c'  
+        if isunix
+            UserPath = [ '/sls/X02DA/Data3/e11126' filesep Beamtime ]
+        else
+            UserPath = [ 'P:\MATLAB\WideFieldScan' filesep 'PreferenceFiles' filesep Beamtime ]
+        end
+        [status,message,messageid] = mkdir(UserPath);
     % choose the path
 %      h=helpdlg('Please choose a path where I should write the output-file'); 
 %      uiwait(h);
@@ -362,7 +372,7 @@ if writeout == 1
         OutputMatrix(:,4)=RotationStopAngle;
         dlmwrite(filename, [ '#--- Protocol ' num2str(minidx) '/' ...
             num2str(TotalProjectionsPerProtocol(minidx)) ' total Proj./'...
-            num2str(TimePerProtocol(minidx)) ' ---#'],'-append','delimiter','');
+            num2str(TimePerProtocol(minidx)) ' minutes ---#'],'-append','delimiter','');
         dlmwrite(filename, [OutputMatrix],  '-append', 'delimiter', ' ');
     end % writeall
 end % writeout

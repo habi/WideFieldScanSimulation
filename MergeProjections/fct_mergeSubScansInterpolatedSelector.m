@@ -488,6 +488,7 @@ WriteEveryXth = 1;
     dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
     
     disp('----');
+    
     %% hardlink logfiles
     LogFileDir = [ SamplePath filesep 'mrg' filesep 'log' ];
     [success,message,messageID] = mkdir(LogFileDir);
