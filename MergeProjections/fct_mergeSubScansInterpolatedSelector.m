@@ -1,7 +1,5 @@
-function fct_mergeSubScan(AmountOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+function fct_mergeSubScanInterpolatedSelector(AmountOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
 
-testing = 0; % calculate gry value for 2 instead of 200 images, set cutlines == 1
-skip=0; % skip Dark/Flat-stuff, mainly for testing
 showProcess = 0; 
 
 WriteEveryXth = 1;
@@ -10,7 +8,7 @@ WriteEveryXth = 1;
     warning off Images:initSize:adjustingMag % suppress the warning about big images, they are still displayed correctly, just a bit smaller..
    
     UserID = 'e11126';
-    BeamTime = '2009c';
+    BeamTime = '2008c';
     Magnification = '10';
     currentLocation = pwd; % since we're 'cd'ing around, save the current location to go back to it at the end
         
@@ -22,17 +20,20 @@ WriteEveryXth = 1;
         PathToFiles = [ 'Data10' filesep BeamTime];    
         SamplePath = fullfile( whereamI , UserID , PathToFiles );
         addpath([ whereamI filesep UserID filesep 'MATLAB'])
+        addpath([ whereamI filesep UserID filesep 'MATLAB' filesep 'WideFieldScan']) 
         addpath([ whereamI filesep UserID filesep 'MATLAB' filesep 'SRuCT']) 
     else
         whereamI = 'S:';
         PathToFiles = [ 'SLS' filesep BeamTime ];
+        Cutlines = [];
         %%%%%% FOR TESTING %%%%%% 
-            whereamI = 'P:';
-            PathToFiles = [ '#Images' filesep 'MergeProjectionsTest' ];
-            Cutlines = 0;
+%             whereamI = 'P:';
+%             PathToFiles = [ '#Images' filesep 'MergeProjectionsTest' filesep ];
+%             Cutlines = 0;
         %%%%%% FOR TESTING %%%%%% 
         SamplePath = fullfile(whereamI, PathToFiles);
         addpath('P:\MATLAB')
+        addpath('P:\MATLAB\WideFieldScan')
         addpath('P:\MATLAB\SRuCT')
     end
     
@@ -71,7 +72,7 @@ WriteEveryXth = 1;
     
     disp('----');
     
-    %% Counting Files (since logfileparsing is too complicated for me...)
+    %% Counting Files (KISS, since logfileparsing is too complicated for the moment...)
     for CurrentSubScan = 1:AmountOfSubScans
         disp([ 'counting tif-Files for ' SubScanDetails(CurrentSubScan).SubScanName ]);         
         CurrentTifDir = [ SubScanDetails(CurrentSubScan).Location filesep 'tif' filesep ];
@@ -104,7 +105,6 @@ WriteEveryXth = 1;
             ' compared to the central SubScan is 1:' num2str(SubScanDetails(CurrentSubScan).ModuloToCenter) ]);
     end
     
-if skip ~= 1    
     %% Average Darks
     for CurrentSubScan = 1:AmountOfSubScans
         disp([ 'Averaging ' num2str(NumDarks) ' Darks for ' ...
@@ -127,9 +127,7 @@ if skip ~= 1
                     % interpretations of Underscores and LaTeX-formatting of title
         end
     end
-end % if skip
 
-if skip ~= 1
     %% Average Flats
     for CurrentSubScan = 1:AmountOfSubScans
         disp(['Averaging ' num2str(NumFlats) ' Flats for ' ...
@@ -156,16 +154,10 @@ if skip ~= 1
                 % interpretations of Underscores and LaTeX-formatting of title
         end
     end
-end % if skip
     
-    %% load a subset of the images for the calculation of GlobalMin &
-    %% GlobalMax
-    if testing == 1
-        disp('I am only testing!');
-        GrayValueLoadHowMany = 2;
-    else
-        GrayValueLoadHowMany = 100;
-    end
+    % load a subset of the images for the calculation of GlobalMin &
+    % GlobalMax
+    GrayValueLoadHowMany = 100;
     GlobalMin = 0;
     GlobalMax = 0;
     disp(['I`m randomly loading ' num2str(AmountOfSubScans * GrayValueLoadHowMany) ...
@@ -190,11 +182,11 @@ end % if skip
                 '.tif'];
             TmpImage = imread(FileToRead);
             if NumFlats ~= 0
-                if skip ~= 1 | NumFlats ~= 0
+                if  NumFlats ~= 0
                     TmpImage = -log(double(TmpImage)./double(SubScanDetails(CurrentSubScan).AverageFlat));
                 end
             end 
-%             figure;imshow(TmpImage,[]);pause(0.05);close;
+            % figure;imshow(TmpImage,[]);pause(0.05);close;
             SubScanDetails(CurrentSubScan).GrayMin = min( min(min(TmpImage)), SubScanDetails(CurrentSubScan).GrayMin);
             SubScanDetails(CurrentSubScan).GrayMax = max( max(max(TmpImage)), SubScanDetails(CurrentSubScan).GrayMax);
             % keep globally lowest and globally highest grayvalue for scaling
@@ -206,14 +198,15 @@ end % if skip
         pause(0.001);
     end
 
-    clear TmpImage;
-    GlobalMin = GlobalMin - ( .25 * GlobalMin ); % set 25% lower for safety reasons
-    GlobalMax = GlobalMax + ( .25 * GlobalMax ); % set 25% higher for safety reasons
-    % disp(['The global minimal grayvalue is ' num2str(GlobalMin) ','])
-    % disp(['the global maximal grayvalue is ' num2str(GlobalMax) '.']);
+   clear TmpImage;
+   GlobalMin = GlobalMin - ( .25 * GlobalMin ); % set 25% lower for safety reasons
+   GlobalMax = GlobalMax + ( .25 * GlobalMax ); % set 25% higher for safety reasons
+   % disp(['The global minimal grayvalue is ' num2str(GlobalMin) ','])
+   % disp(['the global maximal grayvalue is ' num2str(GlobalMax) '.']);
 
     %% loop over the images, calculate the cutline, save it for later and then
     %% perform the Merging
+    
     %% Cutline Extraction
     %% Sample Orientation is crucial for Cutline Extraction, or else the
     %% cutline algorithm cannot calculate the cutline...
@@ -221,16 +214,16 @@ end % if skip
         %% at the start of the scan
         %% set file-number low if sample is perpendicular to beam at the start
         %% of the scan
-    if isempty(Cutlines) % this is set on line ~29 for testing reasons > Cutline is set to "1"
+    if isempty(Cutlines) % this is set on line ~29 for testing reasons, e.g. Cutline can be set arbitrarly...
         perpendicular = 0;
         if perpendicular == 0
             CutlineGenerationFileNumber = max(SubScanDetails(1).NumProj) / 2 + NumDarks + NumFlats + 1;
             % using NumProj from 1. SubScan, thus assuming this is the one with
             % the most projections...
-            % = ProjectionImage @ 180�
+            % -> use ProjectionImage @ 180 degrees
         else
             CutlineGenerationFileNumber = NumDarks + NumFlats + 1;
-            % = 1. Projection Image
+            % use first Projection Image
         end
         for CurrentSubScan=1:AmountOfSubScans
             SubScanDetails(CurrentSubScan).Cutline = Inf;
@@ -242,38 +235,28 @@ end % if skip
             SubScanDetails(CurrentSubScan).CurrentProjection = imread(CutFile);
             SubScanDetails(CurrentSubScan).CurrentProjection = -log(double(SubScanDetails(CurrentSubScan).CurrentProjection)./double(SubScanDetails(CurrentSubScan).AverageFlat));
             % compute Cutline
-            if testing == 1
-                disp('I am only testing! Setting Cutlines with "1"!');
-                for counter = 1:AmountOfSubScans
-                    SubScanDetails(counter).Cutline = Inf;
-                end
-                for counter = 1:AmountOfSubScans - 1
-                    SubScanDetails(counter).Cutline = 1;
-                end
-            else
-                if CurrentSubScan > 1 && isinf(SubScanDetails(CurrentSubScan-1).Cutline)
-                    disp(['Calculating cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
-                        ' and ' SubScanDetails(CurrentSubScan).SubScanName ' (this will take some time...)']);
-                    SubScanDetails(CurrentSubScan-1).Cutline = ...
-                        function_cutline(SubScanDetails(CurrentSubScan-1).CurrentProjection,SubScanDetails(CurrentSubScan).CurrentProjection);
-                    disp(['The cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
-                        ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
-                        num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);           
-                end
+            if CurrentSubScan > 1 && isinf(SubScanDetails(CurrentSubScan-1).Cutline)
+                disp(['Calculating cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
+                    ' and ' SubScanDetails(CurrentSubScan).SubScanName ' (this will take some time...)']);
+                SubScanDetails(CurrentSubScan-1).Cutline = ...
+                    function_cutline(SubScanDetails(CurrentSubScan-1).CurrentProjection,SubScanDetails(CurrentSubScan).CurrentProjection);
+                disp(['The cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
+                    ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
+                    num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);           
             end
         end
     else % isempty(Cutlines)
         for CurrentSubScan=1:AmountOfSubScans
-           disp('The Cutlines have been set to "0" for testing purposes (change at the beginning of fct_mergeSubScanSelector")!');
-                for counter = 1:AmountOfSubScans
-                    SubScanDetails(counter).Cutline = Inf;
-                end
-                for counter = 1:AmountOfSubScans - 1
-                    SubScanDetails(counter).Cutline = 0;
-                end
+            for counter = 1:AmountOfSubScans
+            	SubScanDetails(counter).Cutline = Inf;
+            end
+            for counter = 1:AmountOfSubScans - 1
+            	SubScanDetails(counter).Cutline = 0;
+            end
+            disp([ 'The Cutlines have been set to "' num2str(SubScanDetails(1).Cutline) ...
+                '" for testing purposes (change at the beginning of fct_mergeSubScanSelector")!' ]);
         end
     end % isempty(Cutlines)
-    
     
     %% Merge Files
     FromToTo = 1:WriteEveryXth:max([SubScanDetails.NumProj]); % go from zero to maximal amount of NumProj
@@ -283,22 +266,68 @@ end % if skip
     elseif Tiff == 0
         disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName '-' OutputSuffix '-mrg as .DMP.'])
     end % writeDMP
+
+    InterpolationCounter = 1;
+    InterpolatedImage = [];
     for FileNumber = FromToTo
         waitbar(FileNumber/max(FromToTo));
+        disp([ '----' num2str(FileNumber) '----' ]);
         for CurrentSubScan=1:AmountOfSubScans
             % read in files for concatenation
             CurrentTifDir = [ SubScanDetails(CurrentSubScan).Location filesep 'tif' filesep ];
             FileToMerge = [ CurrentTifDir SubScanDetails(CurrentSubScan).SubScanName ...
                 num2str(sprintf('%04d',ceil(( FileNumber/SubScanDetails(CurrentSubScan).ModuloToCenter) + NumDarks + NumFlats ))) ...
                 '.tif'];
+            disp([ 'SubScanDetails(CurrentSubScan).ModuloToCenter)) is ' num2str(SubScanDetails(CurrentSubScan).ModuloToCenter) ]);
             SubScanDetails(CurrentSubScan).CurrentProjection = imread(FileToMerge);
+            %% we're actually interpolating here > load the two images into
+            %% temporary stack and choose the correct image from this stack
+            if SubScanDetails(CurrentSubScan).ModuloToCenter ~= 1
+                disp([ 'We thus need to interpolate ' num2str(SubScanDetails(CurrentSubScan).ModuloToCenter-1) ' image(s) here.' ]);
+                if InterpolationCounter > SubScanDetails(CurrentSubScan).ModuloToCenter
+                    InterpolatedImage = [];
+                    InterpolationCounter = 1;
+                    disp([ 'InterpolationCounter set to ' num2str(InterpolationCounter) ]);
+                end                 
+                if isempty(InterpolatedImage)
+                    ImageToInterpolate1 = [ CurrentTifDir SubScanDetails(CurrentSubScan).SubScanName ...
+                        num2str(sprintf('%04d',ceil(( FileNumber/SubScanDetails(CurrentSubScan).ModuloToCenter) + NumDarks + NumFlats ))) ...
+                        '.tif'];
+                    if FileNumber >= max(FromToTo)-SubScanDetails(CurrentSubScan).ModuloToCenter 
+                        % If Files to be read are the last set to be
+                        % interpolated, we cannot load any further files,
+                        % so we actually perform a fake interpolation for
+                        % the last set of ModuloToCenter-Slices, since we
+                        FileNumber = max(FromToTo)-SubScanDetails(CurrentSubScan).ModuloToCenter;
+                    end
+                    ImageToInterpolate2 = [ CurrentTifDir SubScanDetails(CurrentSubScan).SubScanName ...
+                        num2str(sprintf('%04d',ceil(( (FileNumber+SubScanDetails(CurrentSubScan).ModuloToCenter)/SubScanDetails(CurrentSubScan).ModuloToCenter) + NumDarks + NumFlats ))) ...
+                        '.tif'];
+                    disp([ 'reading ' ImageToInterpolate1 ])
+                    disp([ 'reading ' ImageToInterpolate2 ])
+                    ImageToInterpolate1 = double(imread(ImageToInterpolate1));
+                    ImageToInterpolate2 = double(imread(ImageToInterpolate2));
+                    disp('--Generating InterpolatedImage--')                        
+                    InterpolatedImage = fct_ImageInterpolator(ImageToInterpolate1,ImageToInterpolate2,SubScanDetails(CurrentSubScan).ModuloToCenter);
+%                     figure
+%                         subplot(121)
+%                             imshow(InterpolatedImage(:,:,1),[])
+%                             title('to interpolate from')
+%                         subplot(122)
+%                             imshow(InterpolatedImage(:,:,end),[])
+%                             title('to interpolate to')
+                end
+                disp([ 'Using slice ' num2str(InterpolationCounter) ' from interpolated image-stack.' ])
+                SubScanDetails(CurrentSubScan).CurrentProjection = InterpolatedImage(:,:,InterpolationCounter); % overwrite already loaded file with interpolated slice
+                InterpolationCounter = InterpolationCounter + 1;
+            end
+            
+            %% correct the images with darks and flats if necessary
             if NumDarks ~= 0
-                if skip ~= 1
-                    SubScanDetails(CurrentSubScan).CurrentProjection = -log(double(SubScanDetails(CurrentSubScan).CurrentProjection)./double(SubScanDetails(CurrentSubScan).AverageFlat));
-                end % ifskip
+                SubScanDetails(CurrentSubScan).CurrentProjection = -log(double(SubScanDetails(CurrentSubScan).CurrentProjection)./double(SubScanDetails(CurrentSubScan).AverageFlat));
             end
         end
-        
+                
         % merge the files to a big projection, depending on what the
         % cutline-function gives out in different sequences...
         if AmountOfSubScans ==3
@@ -357,7 +386,7 @@ end % if skip
         % Write Tiffs
         if Tiff == 1
             % mkdir for merged Proj
-            WriteDir = [ SamplePath filesep 'mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'tif' ];
+            WriteDir = [ SamplePath filesep 'interpolated-mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'tif' ];
             InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep PathToFiles  filesep 'mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'tif' ];
             [success,message,messageID] = mkdir(WriteDir);
             % disp(['writing ' OutputSampleName -' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.tif to disk'])

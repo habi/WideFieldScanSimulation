@@ -26,8 +26,8 @@ else
     whereamI = 'S:';
     PathToFiles = [ 'SLS' filesep BeamTime ];
     SamplePath = fullfile(whereamI, PathToFiles);
-    addpath('P:\doc\MATLAB')
-    addpath('P:\doc\MATLAB\SRuCT')
+    addpath('P:\MATLAB')
+    addpath('P:\MATLAB\SRuCT')
 end
 
 %% work this thing! http://is.gd/swoK

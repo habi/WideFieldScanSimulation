@@ -28,11 +28,10 @@ ImageStack(:,:,2) = double(ImageToInterpolate2);
 x=1:size(ImageToInterpolate1,1);
 y=1:size(ImageToInterpolate1,2);
 z=1:2;
-disp('Setting up the Interpolation.')
 [xi,yi,zi] = meshgrid(1:size(ImageToInterpolate1,1),...
     1:size(ImageToInterpolate1,2),...
     1:(1/(InterpolateHowManyInbetween+1)):2);
-disp(['Interpolating now. For ' num2str(InterpolateHowManyInbetween) ' interpolated image(s), this might take long...'])
+disp(['Interpolating ' num2str(InterpolateHowManyInbetween) ' image(s). This might take long...'])
 InterpolatedImages = interp3(x,y,z,ImageStack,xi,yi,zi);
 
 clear ImageStack

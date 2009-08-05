@@ -29,15 +29,15 @@ if isunix == 1
     PathToFiles = '/Data10/2008c/';    
     BasePath = fullfile( whereamI , UserID , PathToFiles );
     path = '/sls/X02DA/Data10/e11126/2008c/mrg/';
-    addpath = 'p:\MATLAB\SRuCT';
+    addpath = 'P:\MATLAB\SRuCT';
     addpath([ whereamI UserID '/MATLAB'])
     addpath([ whereamI UserID '/MATLAB/SRuCT']) 
 else
     whereamI = 'S:';
     PathToFiles = 'SLS/2008c/mrg/';
     path = fullfile(whereamI, PathToFiles);   
-    addpath('P:\doc\MATLAB')
-    addpath('P:\doc\MATLAB\SRuCT')
+    addpath('P:\MATLAB')
+    addpath('P:\MATLAB\SRuCT')
 end
 
 Slices = 1:50:1024; % every 50th sinogram is reconstructable with RecoManager

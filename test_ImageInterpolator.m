@@ -5,6 +5,9 @@ close all;
 Image1 = imread('s:\SLS\2008c\R108C21Cb_s2\tif\R108C21Cb_s20032.tif');
 Image2 = imread('s:\SLS\2008c\R108C21Cb_s2\tif\R108C21Cb_s21024.tif');
 
+Image1 = imread('p:\#Images\MergeProjectionsTest\Numbers_s3\tif\Numbers_s30001.tif');
+Image2 = imread('p:\#Images\MergeProjectionsTest\Numbers_s3\tif\Numbers_s30003.tif');
+
 % StartFrom = 512;
 % AmountOfImages = 2;
 % 
@@ -14,10 +17,7 @@ Image2 = imread('s:\SLS\2008c\R108C21Cb_s2\tif\R108C21Cb_s21024.tif');
 %     ImageStack(:,:,Image) = imread(['s:\SLS\2008c\R108C21Cb_s2\tif\R108C21Cb_s2' num2str(ImageNumber) '.tif' ]);
 % end
 
-FromToTo = 128:256+64;
-% ImageStack = double(ImageStack(FromToTo,FromToTo,:));
-
-InterpolatedImageStack = fct_ImageInterpolator(Image1,Image2,3);
+InterpolatedImageStack = fct_ImageInterpolator(Image1,Image2,1);
 
 if isempty(InterpolatedImageStack)
     break

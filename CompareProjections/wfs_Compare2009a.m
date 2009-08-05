@@ -18,8 +18,8 @@ if isunix == 1
 else
     whereamI = 'S:';
     PathToFiles = [ 'SLS' filesep '2009a' filesep 'mrg' ];
-    addpath('P:\doc\MATLAB')
-    addpath('P:\doc\MATLAB\SRuCT')
+    addpath('P:\MATLAB')
+    addpath('P:\MATLAB\SRuCT')
 end
 
 path = fullfile(whereamI, PathToFiles);
@@ -193,7 +193,7 @@ if isunix == 0
     xlsfile = [ OutputPath '2009a.xls'];
     xlswrite(xlsfile, CumulativeError )
     disp(['Written CumulativeError to ' xlsfile]);
-    addpath('P:\doc\MaTLAB\matlab2tikz-0.0.1');
+    addpath('P:\MATLAB\matlab2tikz-0.0.1');
 end
 
 figure

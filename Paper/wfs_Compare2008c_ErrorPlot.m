@@ -15,7 +15,7 @@ if isunix == 1
     PathToFiles = '/Data10/2008c/';    
     BasePath = fullfile( whereamI , UserID , PathToFiles );
     path = '/sls/X02DA/Data10/e11126/2009a/mrg/';
-    addpath = 'p:\MATLAB\SRuCT';
+    addpath = 'P:\MATLAB\SRuCT';
     addpath([ whereamI UserID '/MATLAB'])
     addpath([ whereamI UserID '/MATLAB/SRuCT']) 
 else
@@ -38,7 +38,7 @@ showSingleError = 0;
 SliceCounter = 1;
 CumulativeError = [];
 FromToTo = 1:5:1024 %[1:10,1010:1024]
-FromToTo = 1:256:1024
+FromToTo = 128:2:1024
 for CurrentSlice = FromToTo
 %for CurrentSlice = 1:10;    
     clc;
@@ -195,7 +195,7 @@ for CurrentSlice = FromToTo
 end %CurrentSlice
 
 for i = 1:size(FromToTo,2)
-    NormCumulativeError(i,:) = CumulativeError(i,:) ./ max(CumulativeError(i,:)) * (100 - 20) + 20;
+    NormCumulativeError(i,:) = CumulativeError(i,:) ./ max(CumulativeError(i,:)) * (120 - 20) + 20;
 end
 
 figure
@@ -221,7 +221,7 @@ if isunix == 0
     xlsfile = [ OutputPath '2008cNormCumulativeError.xls'];
     xlswrite(xlsfile, NormCumulativeError )
     disp(['Written normalized CumulativeError to ' xlsfile]);
-    addpath('P:\MaTLAB\matlab2tikz');
+    addpath('P:\MATLAB\matlab2tikz');
 end
 
 figure

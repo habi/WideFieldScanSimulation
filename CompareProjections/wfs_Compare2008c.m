@@ -16,15 +16,15 @@ if isunix == 1
     PathToFiles = '/Data10/2008c/';    
     BasePath = fullfile( whereamI , UserID , PathToFiles );
     path = '/sls/X02DA/Data10/e11126/2009a/mrg/';
-    addpath = 'p:\MATLAB\SRuCT';
+    addpath = 'P:\MATLAB\SRuCT';
     addpath([ whereamI UserID '/MATLAB'])
     addpath([ whereamI UserID '/MATLAB/SRuCT']) 
 else
     whereamI = 'S:';
     PathToFiles = [ 'SLS' filesep '2008c' filesep 'mrg' ];
     path = fullfile(whereamI, PathToFiles);   
-    addpath('P:\doc\MATLAB')
-    addpath('P:\doc\MATLAB\SRuCT')
+    addpath('P:\MATLAB')
+    addpath('P:\MATLAB\SRuCT')
 end
 
 %% setup
@@ -205,7 +205,7 @@ if isunix == 0
     xlsfile = [ OutputPath '2008cNormCumulativeError.xls'];
     xlswrite(xlsfile, NormCumulativeError )
     disp(['Written normalized CumulativeError to ' xlsfile]);
-    addpath('P:\doc\MaTLAB\matlab2tikz');
+    addpath('P:\MATLAB\matlab2tikz');
 end
 
 figure

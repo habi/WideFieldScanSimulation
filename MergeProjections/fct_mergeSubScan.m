@@ -22,8 +22,8 @@ WriteEveryXth = 1;
         whereamI = 'E:';
         PathToFiles = '/2009a';
         SamplePath = fullfile(whereamI, PathToFiles);   
-        addpath('P:\doc\MATLAB')
-        addpath('P:\doc\MATLAB\SRuCT')
+        addpath('P:\MATLAB')
+        addpath('P:\MATLAB\SRuCT')
     end
     
     if Tiff == 1
