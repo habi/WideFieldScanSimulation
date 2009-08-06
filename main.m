@@ -19,7 +19,7 @@ printdir = [ pwd filesep 'SimulationOutput' ];
 writeas = '-dpng';
 
 %% User input and value extraction
-% User Input is done via an Input Dialog (inputdlg)
+% User Input is done via an Input Dialog (inputdlg, adapted from http://blinkdagger.com/matlab/matlab-querying-the-user-for-input)
 InputDialog={...
     'FOV [mm]',...              % 1
     'Binning',...               % 2
@@ -81,10 +81,12 @@ pixelsize = 7.4 / Magnification * Binning; % makes Pixel Size [um] equal to seco
 FOV_px = round( FOV_mm * 1000 / pixelsize); % mm -> um -> px
 DetectorWidth_px= 2048 / Binning;  % The camera is 2048 px wide > FOV scales with binning
 
-SegmentWidth_px = DetectorWidth_px - Overlap_px;
+SegmentWidth_px = DetectorWidth_px - Overlap_px;    
 AmountOfSubScans = ceil( FOV_px / SegmentWidth_px );  
 
-pause(0.001);disp([num2str(AmountOfSubScans) ' SubScans are needed to cover your chosen FOV']);
+pause(0.001);
+disp([num2str(AmountOfSubScans) ' SubScans are needed to cover your chosen FOV']);
+
 if mod(AmountOfSubScans,2) == 0 % AmountOfSubScans needs to be odd
     AmountOfSubScans = AmountOfSubScans +1;
     disp(['Since an odd Amount of SubScans is needed, we acquire ' num2str(AmountOfSubScans) ' SubScans.'])
