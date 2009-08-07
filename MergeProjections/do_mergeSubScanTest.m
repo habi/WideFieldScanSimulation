@@ -11,19 +11,19 @@ OutputSampleName = 'TestTest';
 disp('Starting to merge');
 
 % OutputSuffix = 'A';
-% fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+% fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 % 
 % OutputSuffix = 'B';
-% fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+% fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 % 
 % OutputSuffix = 'C';
-% fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+% fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 
 OutputSuffix = 'D';
-fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+fct_mergeSubScanSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 close all;
 
 disp('-----');

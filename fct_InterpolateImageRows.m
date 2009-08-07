@@ -1,9 +1,9 @@
-function OutputImage=fct_InterpolateImageRows(InputImage,InterpolateEveryXthLnie,varargin)
+function OutputImage=fct_InterpolateImageRows(InputImage,InterpolateEveryXthLine,varargin)
 % function takes InputImage, LineNumberToInterpolate and an - optional -
 % third argument to flip the image ("1"). If the third argument is set, the
 % image is flipped prior to the interpolation, essentially interpolating
 % horizontally
-    if InterpolateEveryXthLnie == 1
+    if InterpolateEveryXthLine == 1
         OutputImage = InputImage;
         return
     end
@@ -15,8 +15,8 @@ function OutputImage=fct_InterpolateImageRows(InputImage,InterpolateEveryXthLnie
     disp(['interpolating in ' InterpolationDirection ' direction']);
     OutputImage=zeros(size(InputImage,1),size(InputImage,2)); % preallocate for MUCH faster execution
     i = 1:size(InputImage,2);
-    OutputImage(:,i) = interp1(1:InterpolateEveryXthLnie:size(InputImage,1),...
-        InputImage(1:InterpolateEveryXthLnie:size(InputImage,1),i),...
+    OutputImage(:,i) = interp1(1:InterpolateEveryXthLine:size(InputImage,1),...
+        InputImage(1:InterpolateEveryXthLine:size(InputImage,1),i),...
         1:size(InputImage,1),'linear','extrap');
     %OutputImageSize=size(OutputImage)
     if nargin > 2 && varargin{1}

@@ -15,7 +15,7 @@ Suffixes = [ 'a';'b';'c';'d';'e';'f';'g';'h';'i';'j';'k';'l';'m';'n';'o';'p';'q'
 %     OutputSampleName = 'R108C36C';
 %     OutputSuffix = Suffixes(WorkOnScan);
 %     disp('Starting to merge');
-%     fct_mergeSubScan(SampleName,FirstSubScan,AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+%     fct_mergeSubScan(SampleName,FirstSubScan,AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % end
 
 SampleName = 'R108C36C3';
@@ -24,7 +24,7 @@ for WorkOnScan = 2:4
     OutputSampleName = 'R108C36C';
     OutputSuffix = Suffixes(4+WorkOnScan);
     disp('Starting to merge');
-    fct_mergeSubScan(SampleName,FirstSubScan,AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+    fct_mergeSubScan(SampleName,FirstSubScan,AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 end
 
 disp('-----');

@@ -10,22 +10,22 @@ disp('Starting to merge');
 
 OutputSampleName = 'Test';
 OutputSuffix = '04';
-fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 close all;
 %%%%%%%%%%%%%%%
 OutputSampleName = 'Test';
 OutputSuffix = '08';
-fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 close all;
 %%%%%%%%%%%%%%%
 OutputSampleName = 'Test';
 OutputSuffix = '16';
-fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 close all;
 %%%%%%%%%%%%%%%
 OutputSampleName = 'Test';
 OutputSuffix = '32';
-fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 close all;
 
 disp('-----');

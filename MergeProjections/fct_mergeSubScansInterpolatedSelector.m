@@ -1,4 +1,4 @@
-function fct_mergeSubScanInterpolatedSelector(AmountOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+function fct_mergeSubScanInterpolatedSelector(AmountOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 
 showProcess = 0; 
 
@@ -8,7 +8,6 @@ WriteEveryXth = 1;
     warning off Images:initSize:adjustingMag % suppress the warning about big images, they are still displayed correctly, just a bit smaller..
    
     UserID = 'e11126';
-    BeamTime = '2008c';
     Magnification = '10';
     currentLocation = pwd; % since we're 'cd'ing around, save the current location to go back to it at the end
         

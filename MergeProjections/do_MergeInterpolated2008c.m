@@ -11,27 +11,27 @@ disp('Starting to merge');
 OutputSampleName = 'R108C21C';
 %%%%
 % OutputSuffix = 'b';
-% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 % %%%%
 % OutputSuffix = 'd';
-% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 %%%%
 % OutputSuffix = 'm';
-% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 % %%%%
 % OutputSuffix = 'n';
-% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 % %%%%
 OutputSuffix = 's';
-fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 close all;
 %%%%
 OutputSuffix = 't';
-fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,OutputSampleName,OutputSuffix)
+fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 close all;
 %%%%
 
