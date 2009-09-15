@@ -1,4 +1,4 @@
-\documentclass[twoside,a4paper]{scrartcl}
+\documentclass[a4paper]{scrartcl}
 \usepackage[ansinew]{inputenc}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{graphicx}
@@ -25,8 +25,8 @@
 
 \maketitle
 %\tableofcontents\pagebreak
-This document\footnote{A pretty recent version is available online at \url{http://www.ana.unibe.ch/~haberthuer/manuals}} 
-should give a walk through for successfully performing a high resolution synchrotron radiation based x-ray tomographic microscopy (SRXTM, \cite{Haberthuer2009d}) at TOMCAT, the beamline for TOmographic Microscopy and Coherent rAdiology experimenTs~\cite{Stampanoni2007}
+This document\footnote{A recent version is available at \url{http://www.ana.unibe.ch/~haberthuer/manuals}} 
+should give a walk through for successfully performing a high resolution synchrotron radiation based x-ray tomographic microscopy with enhaced lateral field of view (WF-SRXTM, \cite{Haberthuer2009d}) at TOMCAT, the beamline for TOmographic Microscopy and Coherent rAdiology experimenTs~\cite{Stampanoni2007}
 
 \section[Setup]{Setup of a WF-SRXTM scan}
 After starting MATLAB on one of the computing consoles at TOMCAT (start it with entering \verb+matlab &+ in the console), open the file $\sim$\verb+/MATLAB/main.m+ in the home directory of our E-Account e11126 (\url{/sls/X02DA/data/e11126/}).
@@ -160,9 +160,10 @@ and you'll get the reconstructed slices after a short waiting time (again: \verb
 	\item [4,10,0.5] Filter and Filter parameters
 	\item [0 0,0,0,0] Rotation and Region of Interest, generally left at zero
 	\item [0,0.3,10] Ring removal filter. Generally, we don't need it. If rings are very prominent, then swap the ``0'' for a ``1''
-	\item [8,G\textsubscript{min},G\textsubscript{min},0.0] Reconstructions with a bit depth of 8=\SI{8}{\bit} (or ``16'' for \SI{16}{\bit}) scaled to the gray values G\textsubscript{min} and G\textsubscript{min}\todo{what was 0.0 again?}.
+	\item [8,G\textsubscript{min},G\textsubscript{min},0.0] Reconstructions with a bit depth of 8=\SI{8}{\bit} (or ``16'' for \SI{16}{\bit}) scaled to the gray values G\textsubscript{min} and G\textsubscript{min}. The last parameter ``0.0'' is used, if the files should be reconstructed into .ISQ-files for the Scanco-Workstation. We just leave it as ``0.0''.
 	\item [``suffix''] the suffix to add to the output directory (rec_8bit_suffix), nice if you want to test different things. Leave empty (``'') if you don't want to have a suffix.
-	\item [1,0,0 1] \todo{what was 1,0,0 again?} ``1'' is the binning which can be set in addition to the binning of the camera.
+	\item [1,0,0] The first parameter can be used to reconstruct only the x\textsuperscript{th} sinogram (we want each and every sinogram, thus ``1''). The ``0,0'' can be used to only reconstruct a region of the slices, e.g.\ if a ROI should be reconstructed; ``0,0'' reconstructs the full slices.
+	\item [1] ``1'' is the binning which can be set in addition to the binning of the camera.
 \end{description}
 
 It's probably easiest for you if you copy the command into a text file so you can make sure you've got no typo and then enter it on the command line. Wait a bit and enjoy your reconstructions of a WF-SRXTM scan.
