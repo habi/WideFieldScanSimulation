@@ -29,14 +29,14 @@ end
 FilePath = fullfile(whereamI, PathToFiles);
 
 %% setup
-ResizeSize = 2800;
+ResizeSize = 2048;
 showFigures = 0;
 doThreshold = 0;
 writeToFiles = 1;
 
 %% read files, threshold them with Otsu and calculate error/similarifty
 SliceCounter = 1;
-SlicesToDo = [650:333:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
+SlicesToDo = [150:5:1024]; % Sample "starts" at Slice 16, we're not starting 'till Slice 50...
 for Slice = SlicesToDo
 	close all;
     for ProtocolCounter = 1:size(Protocols,2)
@@ -51,8 +51,6 @@ for Slice = SlicesToDo
             num2str(size(Details(ProtocolCounter).RecTif,2)) ' px.' ]));
         disp(['Resizing to ' num2str(ResizeSize) 'x' num2str(ResizeSize) ' px.']);
             Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[ResizeSize NaN]);
-            Details(ProtocolCounter).ThresholdedSlice = Details(ProtocolCounter).RecTif;
-            Details(ProtocolCounter).Threshold = NaN;
         if doThreshold == 1
             disp('Calculating Otsu Threshold and Thresholding Image...')
                 Details(ProtocolCounter).Threshold = graythresh(Details(ProtocolCounter).RecTif);
@@ -60,6 +58,10 @@ for Slice = SlicesToDo
                     im2bw(Details(ProtocolCounter).RecTif,Details(ProtocolCounter).Threshold);
             disp(['Threshold is ' num2str(Details(ProtocolCounter).Threshold ...
                 * intmax(class(Details(ProtocolCounter).RecTif))) ]);
+        elseif doThreshold == 0
+            disp('No Thresholding happens!')
+            Details(ProtocolCounter).ThresholdedSlice = Details(ProtocolCounter).RecTif;
+            Details(ProtocolCounter).Threshold = NaN;
         end
         disp(cell2mat(['Calculating Difference Image to Protocol ' Protocols(1) ]));
             Details(ProtocolCounter).DiffImg = imabsdiff( ...
@@ -67,7 +69,7 @@ for Slice = SlicesToDo
                 imresize(Details(1).ThresholdedSlice,[1024 NaN]) ...
                 );
             Details(ProtocolCounter).DiffImg = imabsdiff(Details(ProtocolCounter).ThresholdedSlice,Details(1).ThresholdedSlice);
-        disp('Calculating the Sum over the Difference Image as an Error-Measure')
+        disp('Calculating Sum over the Difference Image')
             Details(ProtocolCounter).Error = sum( sum( Details(ProtocolCounter).DiffImg ) );      
         disp(['Calculating SSIM-Index(A,' cell2mat(Protocols(ProtocolCounter)) ')']) % SSIM-Index implementation from http://is.gd/4XZqM
             [ Details(ProtocolCounter).SSIM Details(ProtocolCounter).SSIMMap ] = ...
@@ -191,7 +193,7 @@ figure
         legend(num2str(SlicesToDo'),'Location','BestOutside')
 %figure       
      subplot(224)
-        ssimplot=mean(ImgSSIM,2);
+        ssimplot=mean(ImgSSIM,2); % calculate average of ImgSSIM for plotting it correctly
         ssimstddev=std(ImgSSIM,0,2);
         errorbar(ssimplot,ssimstddev);
         title([ 'mean SSIM for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
@@ -214,6 +216,9 @@ figure
     set(gca,'XTick',[1:4])
     set(gca,'XTickLabel',rot90(fliplr(Protocols(1:4))))
         
+Protocols
+ssimplot
+ssimstddev
 
 disp('---');    
 disp('Finished with everything you asked for.');
