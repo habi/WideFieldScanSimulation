@@ -1,4 +1,4 @@
-function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfProjections,MaximalReconstruction,ShowFigure)
+function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfProjections,MaximalReconstruction,SSIM,ShowFigure)
     AbsoluteError = 0;
     ErrorPerPixel = 0;
     AmountOfSubScans = length(NumberOfProjections);
@@ -35,21 +35,30 @@ function [ AbsoluteError, ErrorPerPixel] = fct_ErrorCalculation(Image,NumberOfPr
 
     % size(MaximalReconstruction);
     % size(InterPolatedReconstruction);
-         
-    DifferenceImage = imabsdiff(MaximalReconstruction,InterPolatedReconstruction);
-
-    AbsoluteError = sum( sum( DifferenceImage ) );
+    if SSIM == 0
+        disp('Calculating the Error with the Sum over the Difference Image!!!!')
+        DifferenceImage = imabsdiff(MaximalReconstruction,InterPolatedReconstruction);
+        AbsoluteError = sum( sum( DifferenceImage ) );
+        disp('Calculating the Error with the Sum over the Difference Image!!!!')
+    elseif SSIM == 1
+        disp('Calculating the Error with SSIM!!!!')
+        [ AbsoluteError, ssim_map ] = ssim_index(MaximalReconstruction,InterPolatedReconstruction);
+        AbsoluteError = 1 - AbsoluteError;
+        disp('Calculating the Error with SSIM!!!!')
+    end
     ErrorPerPixel = AbsoluteError / ( size( MaximalReconstruction,1 ) ^2);
-    
     if ShowFigure == 1
-        figure;
+        figure
             subplot(121)
-                imshow(InterPolatedReconstruction,[])
-                title('Interpolated Reconstruction');
-                axis on
+                imshow(InterPolatedReconstruction,[]);
+                title('Interpolated Reconstruction')
             subplot(122)
-                imshow(DifferenceImage,[]);
-                title('Difference Image');
-                axis on
+                if SSIM == 0    
+                    imshow(DifferenceImage,[]);
+                    title('Difference Image');
+                elseif SSIM == 1
+                    imshow(max(0, ssim_map).^4,[]);
+                    title('SSIM Map');
+                end
     end
 end
