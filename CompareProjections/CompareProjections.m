@@ -2,25 +2,25 @@ tic
 clear all;close all;clc;
 warning off Images:initSize:adjustingMag;
 
-BeamTime = '2008c';
-Protocols = [{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},...
-    {'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'}];
-SamplePrefix = 'R108C21C';
-recFolder = 'rec_8bit';
+% BeamTime = '2008c';
+% Protocols = [{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},...
+%     {'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'}];
+% SamplePrefix = 'R108C21C';
+% recFolder = 'rec_8bit';
 
 % BeamTime = '2009a';
 % Protocols = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'}];
 % SamplePrefix = 'R108C36C';
 % recFolder = 'rec_8bit';
 
-% BeamTime = '2009b';
-% Protocols = [ ...
-%     {'A'},{'Aa'},{'Ab'},{'Ac'}, ...
-%     {'B'},{'Ba'},{'Bb'},{'Bc'}, ...
-%     {'C'},{'Ca'},{'Cb'},{'Cc'}, ...
-%     {'D'},{'Da'},{'Db'},{'Dc'}];
-% SamplePrefix = 'R108C36B';
-% recFolder = 'rec_8bit_';
+BeamTime = '2009b';
+Protocols = [ ...
+    {'A'},{'Aa'},{'Ab'},{'Ac'}, ...
+    {'B'},{'Ba'},{'Bb'},{'Bc'}, ...
+    {'C'},{'Ca'},{'Cb'},{'Cc'}, ...
+    {'D'},{'Da'},{'Db'},{'Dc'}];
+SamplePrefix = 'R108C36B';
+recFolder = 'rec_8bit_';
 
 % BeamTime = '2009c';
 % Protocols = [{'A'},{'B'},{'C'},{'D'},{'E'}];
@@ -46,18 +46,22 @@ end
 FilePath = fullfile(whereamI, PathToFiles);
     
 %% setup
-ResizeSize = 2712; % "1" = -> don't resize
-SlicesFrom = 824;
-SlicesStep = 1;
+ResizeSize = 2800; % "1" = -> don't resize
+SlicesFrom = 200;
+SlicesStep = 34;
 SlicesTo = 1024;
 
-showFigures = 1;
+showFigures = 0;
 doThreshold = 0;
 writeToFiles = 1;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
 SlicesToDo = [SlicesFrom:SlicesStep:SlicesTo];
+disp(['Calculating for ' num2str(numel(SlicesToDo)) ' different slices'])
+disp('---')
+pause(1)
+
 for Slice = SlicesToDo
     close all;
     for ProtocolCounter = 1:size(Protocols,2)
@@ -167,8 +171,9 @@ for Slice = SlicesToDo
     SliceCounter = SliceCounter + 1;
 end
 
-FileSuffix = [ 'slices' num2str(SlicesFrom) '-' num2str(SlicesStep) '-' ...
-    num2str(SlicesTo) '-resize' num2str(ResizeSize) ];
+FileSuffix = [ 'slices' num2str(sprintf('%04d',SlicesFrom)) '-' ...
+    num2str(sprintf('%04d',SlicesStep)) '-' num2str(sprintf('%04d',SlicesTo)) ...
+    '-resize' num2str(sprintf('%04d',ResizeSize)) ];
 ErrorFileName = [ FilePath filesep 'ImgError-' BeamTime '-' FileSuffix ]; % writing to .xls in both cases, so Excel can open it
 SSIMFileName = [ FilePath filesep 'ImgSSIM-' BeamTime '-' FileSuffix ];
 
@@ -259,8 +264,11 @@ figure
         set(gca,'XTick',[1:length(Protocols)])
         set(gca,'XTickLabel',rot90(fliplr(Protocols)))
         
-scale = 20:100;
-ImgSSIM = (ImgSSIM - min(min(ImgSSIM)))* ( (max(scale)-min(scale))/(max(max(ImgSSIM))-min(min(ImgSSIM))))+ min(scale) % scale ImgSSIM from 20:100, so we have the same plot as in the simulation...
+if BeamTime == '2008c' %Scale the SSIM-Values from 16-116%
+    scale = 16:116;
+    ImgSSIM = (ImgSSIM - min(min(ImgSSIM)))* ( (max(scale)-min(scale))/(max(max(ImgSSIM))-min(min(ImgSSIM))))+ min(scale) % scale ImgSSIM from 20:100, so we have the same plot as in the simulation...
+end
+
 ssimplot=mean(ImgSSIM,2);
 ssimstddev=std(ImgSSIM,0,2);
 
@@ -317,7 +325,9 @@ if BeamTime == '2009b'
         set(gca,'XTick',[1:4])
         set(gca,'XTickLabel',['**';'*a';'*c';'*d'])
         addpath('P:\MATLAB\matlab2tikz\');
-        matlab2tikz([ SSIMFileName 'ABCD.tex']);
+            disp([ 'Writing plot to ' SSIMFileName '-ABCD.tex']);
+            matlab2tikz([ SSIMFileName '-ABCD.tex']);
+            print([ SSIMFileName '-ABCD.png'],'-dpng')
         
     figure       
         hold on
@@ -330,9 +340,10 @@ if BeamTime == '2009b'
         ylabel('mean SSIM(A,*)')
         legend(['**';'*a';'*c';'*d'])
         set(gca,'XTick',[1:4])
-        set(gca,'XTickLabel',rot90(fliplr(Protocols(1:4:end))))
-        addpath('P:\MATLAB\matlab2tikz\');
-                matlab2tikz([ SSIMFileName 'AAaAbAc.tex']);        
+        set(gca,'XTickLabel',rot90(fliplr(Protocols(1:4:end)))) 
+            disp([ 'Writing plot to ' SSIMFileName '-AAaAbAc.tex']);
+            matlab2tikz([ SSIMFileName '-AAaAbAc.tex']);
+            print([ SSIMFileName '-AAaAbAc.png'],'-dpng')
 end
 
 %% [color=red, only marks, mark = * ]
@@ -340,9 +351,9 @@ end
 %% [color=blue, only marks, mark = square*]
 %% [color=magenta, only marks, mark = triangle*]
 
-Protocols
-ssimplot
-ssimstddev
+%Protocols
+%ssimplot
+%ssimstddev
 
 disp('---');
 disp(['Elapsed time is approx. ' num2str(round(toc/60)) ' minutes.']);

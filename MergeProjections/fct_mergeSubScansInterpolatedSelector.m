@@ -10,13 +10,14 @@ WriteEveryXth = 1;
     UserID = 'e11126';
     Magnification = '10';
     currentLocation = pwd; % since we're 'cd'ing around, save the current location to go back to it at the end
-        
+    Cutlines = [];
+    
     if isunix == 1 
         %beamline
-            % whereamI = '/sls/X02DA/data';
+            whereamI = '/sls/X02DA/data';
         %slslc05
-            whereamI = '/afs/psi.ch/user/h/haberthuer/slsbl/x02da';
-        PathToFiles = [ 'Data10' filesep BeamTime];    
+            %whereamI = '/afs/psi.ch/user/h/haberthuer/slsbl/x02da';
+        PathToFiles = [ 'Data3' filesep BeamTime];    
         SamplePath = fullfile( whereamI , UserID , PathToFiles );
         addpath([ whereamI filesep UserID filesep 'MATLAB'])
         addpath([ whereamI filesep UserID filesep 'MATLAB' filesep 'WideFieldScan']) 
@@ -24,7 +25,6 @@ WriteEveryXth = 1;
     else
         whereamI = 'S:';
         PathToFiles = [ 'SLS' filesep BeamTime ];
-        Cutlines = [];
         %%%%%% FOR TESTING %%%%%% 
 %             whereamI = 'P:';
 %             PathToFiles = [ '#Images' filesep 'MergeProjectionsTest' filesep ];
@@ -38,7 +38,7 @@ WriteEveryXth = 1;
     
     h=helpdlg(['I will now prompt you to select ' num2str(AmountOfSubScans) ...
         ' Directories for the SubScans which should be merged into one' ...
-        ' Scan called "' OutputSampleName '-' OutputSuffix '-mrg". You only' ...
+        ' Scan called "' OutputSampleName OutputSuffix '-mrg". You only' ...
         ' need to select the root-directory of each SubScan, i`ll look for' ...
         ' the "tif" directory inside myself...' ],'Instructions');
     uiwait(h);
@@ -52,7 +52,7 @@ WriteEveryXth = 1;
         SubScanDetails(CurrentSubScan).Location = uigetdir(SamplePath,...
             [ 'Please locate SubScan Nr. ' num2str(CurrentSubScan) ' of ' ...
             num2str(AmountOfSubScans) ' to be merged into ' OutputSampleName ...
-            '-' OutputSuffix '-mrg' ]);
+            OutputSuffix '-mrg' ]);
         [ tmp,SubScanDetails(CurrentSubScan).SubScanName,tmp ] = ...
             fileparts(SubScanDetails(CurrentSubScan).Location);
     end
@@ -70,6 +70,7 @@ WriteEveryXth = 1;
     end
     
     disp('----');
+    pause(1)
     
     %% Counting Files (KISS, since logfileparsing is too complicated for the moment...)
     for CurrentSubScan = 1:AmountOfSubScans
@@ -103,6 +104,7 @@ WriteEveryXth = 1;
         disp(['The ratio of acquired Projections for Subscan ' SubScanDetails(CurrentSubScan).SubScanName ...
             ' compared to the central SubScan is 1:' num2str(SubScanDetails(CurrentSubScan).ModuloToCenter) ]);
     end
+    pause(1)
     
     %% Average Darks
     for CurrentSubScan = 1:AmountOfSubScans
@@ -153,6 +155,7 @@ WriteEveryXth = 1;
                 % interpretations of Underscores and LaTeX-formatting of title
         end
     end
+    pause(1)
     
     % load a subset of the images for the calculation of GlobalMin &
     % GlobalMax
@@ -241,7 +244,18 @@ WriteEveryXth = 1;
                     function_cutline(SubScanDetails(CurrentSubScan-1).CurrentProjection,SubScanDetails(CurrentSubScan).CurrentProjection);
                 disp(['The cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
                     ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
-                    num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);           
+                    num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);
+                warndlg('Confirm Cutlines please (Look in MATLABs window for accepting/correcting it','!! Warning !!')
+                disp('Do you like this value as cutline?');
+                CutLineIsOK = input('[1]=yes, proceed, [0]=no, let me enter a better one: ');
+                if CutLineIsOK == 0
+                     disp(['Enter new cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
+                    ' and ' SubScanDetails(CurrentSubScan).SubScanName ':']);
+                    SubScanDetails(CurrentSubScan-1).Cutline = input('[px] ');
+                    disp(['The NEW cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
+                    ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
+                    num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);
+                end
             end
         end
     else % isempty(Cutlines)
@@ -259,11 +273,11 @@ WriteEveryXth = 1;
     
     %% Merge Files
     FromToTo = 1:WriteEveryXth:max([SubScanDetails.NumProj]); % go from zero to maximal amount of NumProj
-    w = waitbar(0,['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName '-' OutputSuffix '-mrg to Disk.' ]);
+    w = waitbar(0,['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '-mrg to Disk.' ]);
     if Tiff == 1
-        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName '-' OutputSuffix '-mrg as .tif.'])
+        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '-mrg as .tif.'])
     elseif Tiff == 0
-        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName '-' OutputSuffix '-mrg as .DMP.'])
+        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '-mrg as .DMP.'])
     end % writeDMP
 
     InterpolationCounter = 1;
@@ -385,11 +399,11 @@ WriteEveryXth = 1;
         % Write Tiffs
         if Tiff == 1
             % mkdir for merged Proj
-            WriteDir = [ SamplePath filesep 'interpolated-mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'tif' ];
-            InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep PathToFiles  filesep 'mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'tif' ];
+            WriteDir = [ SamplePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
+            InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep PathToFiles  filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
             [success,message,messageID] = mkdir(WriteDir);
-            % disp(['writing ' OutputSampleName -' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.tif to disk'])
-            WriteTifName = [ WriteDir filesep OutputSampleName '-' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
+            % disp(['writing ' OutputSampleName - ' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.tif to disk'])
+            WriteTifName = [ WriteDir filesep OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
             if NumDarks ~= 0 && NumFlats ~= 0
                 MergedProjection = MergedProjection - GlobalMin;
                 MergedProjection = MergedProjection ./ GlobalMax;
@@ -400,24 +414,24 @@ WriteEveryXth = 1;
         % write DMPs
         if Tiff == 0
             % mkdir for merged Proj
-            WriteDir = [ SamplePath filesep 'mrg' filesep OutputSampleName '-' OutputSuffix '-mrg' filesep 'DMP' ];
+            WriteDir = [ SamplePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'DMP' ];
             [success,message,messageID] = mkdir(WriteDir);
-            % disp(['writing ' OutputSampleName '-' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.DMP to disk'])
-            WriteDMPName = [ WriteDir filesep OutputSampleName '-' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
+            % disp(['writing ' OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.DMP to disk'])
+            WriteDMPName = [ WriteDir filesep OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
             writeDumpImage(MergedProjection,[WriteDMPName '.DMP']);
         end % writeDMP
         
         clear MergedProjection;
         
     end % FileNumberLoop
-    close(w);
+    %close(w);
     %%%%%%%%%%%%%%%%%
     % generate fake LogFile
     %%%%%%%%%%%%%%%%%
    
-    LogFileName = [ OutputSampleName '-' OutputSuffix '-mrg.log' ];
+    LogFileName = [ OutputSampleName OutputSuffix '-mrg.log' ];
     LogFile = [ WriteDir filesep LogFileName ]; % WriteDir is used from above, so we have different paths depending on tif/DMP.
-    WriteSampleName = [ OutputSampleName '-' OutputSuffix '-mrg' ];
+    WriteSampleName = [ OutputSampleName OutputSuffix '-mrg' ];
 
     disp('----');
     disp(['Generating fake logfile for the sample ' WriteSampleName '.' ]);
@@ -493,7 +507,7 @@ WriteEveryXth = 1;
     [success,message,messageID] = mkdir(LogFileDir);
     if isunix == 1 % only works if @TOMCAT or @slslc05
         logfilecommand = [ 'ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ];
-        disp(['Hard-Linking LogFile ' OutputSampleName '-' OutputSuffix '-mrg.log with the command:']);
+        disp(['Hard-Linking LogFile ' OutputSampleName OutputSuffix '-mrg.log with the command:']);
         disp([ '"' logfilecommand '"' ]);
         system(logfilecommand);
     end
@@ -502,7 +516,7 @@ WriteEveryXth = 1;
     %% generate sinograms
     if isunix == 1 % only works if @TOMCAT,x02da-cons-2 or @slslc05...
         sinogramcommand = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
-        disp(['Generating Sinograms for ' OutputSampleName '-' OutputSuffix '-mrg with:']);
+        disp(['Generating Sinograms for ' OutputSampleName OutputSuffix '-mrg with:']);
         disp([ '"' sinogramcommand '"' ]);
         system(sinogramcommand);
     end
@@ -523,7 +537,7 @@ WriteEveryXth = 1;
         sekunde = sekunde - 60*minute;
         disp(['It took me approx ' num2str(round(minute)) ' minutes and ' ...
             num2str(round(sekunde/10)*10) ' seconds to merge the sample ' ...
-            OutputSampleName '-' OutputSuffix '-mrg' ]);
+            OutputSampleName OutputSuffix '-mrg' ]);
     end    
 	disp('---');
     

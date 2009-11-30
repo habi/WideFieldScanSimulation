@@ -1,3 +1,4 @@
+tic
 %% Simulation of different Protocols for wide-field-scanning
 % Main file for WideFieldScan-Simulation
 %
@@ -14,8 +15,8 @@ else
 end
 
 printit = 1;
-ShowTheErrorFigures = 1;
-SSIM = 0; % User SSIM to calculate the "Error". 0=DifferenceImage, 1=SSIM, 
+ShowTheErrorFigures = 0;
+SSIM = 1; % User SSIM to calculate the "Error". 0=DifferenceImage, 1=SSIM, 
 writeas = '-dpng';
 
 FOV_mm            = 4;  % This is the FOV the user wants to achieve
@@ -26,7 +27,7 @@ Overlap_px        = 100;  % Overlap between the SubScans, needed for merging
 MinimalQuality    = 16;  % minimal Quality for Simulation
 MaximalQuality    = 100;  % maximal Quality for Simulation     
 QualityStepWidth  = 4.6666;  % Quality StepWidth, generally 10%
-SimulationSize_px = 256;  % DownSizing Factor for Simulation > for Speedup
+SimulationSize_px = 1010;  % DownSizing Factor for Simulation > for Speedup
 writeout          = 1; % Do we write a PreferenceFile to disk at the end?
 UserSampleName  = 'Paper';     % SampleName For OutputFile, now without str2num, since it's already a string...
 Beamtime     = 'Paper';     % Beamtime-Name, used for the path for writing the preference-file
@@ -128,7 +129,7 @@ ModelMaximalSinogram = radon(ModelImage,theta);
 disp('Calculating ModelReconstruction...');
 ModelMaximalReconstruction = iradon(ModelMaximalSinogram,theta);
 
-h = waitbar(0,['Simulating']);
+h = waitbar(0,'Simulating');
 for Protocol = 1:size(ModelNumberOfProjections,1)
   waitbar(Protocol/size(ModelNumberOfProjections,1),h,['Working on Protocol ' num2str(Protocol) ' of ' num2str(size(ModelNumberOfProjections,1)) '.'])
   disp('---');
@@ -140,7 +141,6 @@ for Protocol = 1:size(ModelNumberOfProjections,1)
   pause(0.001);
 end
 close(h)
-
 
 %% Normalizing the Error
 Quality = max(ErrorPerPixel) - ErrorPerPixel;
@@ -155,18 +155,24 @@ figure
   EvalFittedQuality = polyval(FittedQuality,ScanningTime(SortIndex),ErrorEst);
   % Plot the data and the fit
   plot(ScanningTime(SortIndex),EvalFittedQuality,'-',ScanningTime(SortIndex),Quality(SortIndex),'o');
-  xlabel(['Time used [Percent of Gold Standard]']);
+  xlabel('Time used [Percent of Gold Standard]');
   ylim([0 120]) 
   ylabel('Expected Quality of the Scan [Percent]');
   grid on;
   title('Quality plotted vs. sorted Total Number of Projections');
   %legend(['polynomial Fit (' num2str(FitFactor) ')'],'Protocols','Location','SouthEast')
-  legend(['polynomial Fit'],'Protocols','Location','SouthEast')
+  legend('polynomial Fit','Protocols','Location','SouthEast')
   if printit == 1
-    File = [ num2str(ModelSize) 'px-Simulation-SSIMVsScanningTime-forPaper' ];
+    if SSIM == 1
+        Method = 'SSIM'
+    elseif SSIM == 0
+        Method = 'DiffImg'
+    end
+    File = [ num2str(sprintf('%04d',ModelSize)) 'px-Simulation-' Method 'VsScanningTime-forPaper' ];
     filename = [ 'P:\MATLAB\WideFieldScan\PaperPlots' filesep File ];
     print(writeas, filename);    
     filename = [ filename '.tex' ];
     matlab2tikz(filename);
   end
  
+disp(['it took me approx. ' num2str(round(toc/60)) ' minutes to calculate everything...']);

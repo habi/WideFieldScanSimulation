@@ -10,6 +10,7 @@ addpath('P:\MATLAB\WideFieldScan\');
 cd('P:\MATLAB\WideFieldScan\Paper');
 
 printit = 1;
+SSIM = 0; %calculate conventional error with 0, use SSIM with 1
 printdir = [ pwd filesep 'SimulationOutput' ];
 [status,message,messageid] = mkdir(printdir); % stat, mess, messid: so we don't get an annoying message each time the directory exists...
 writeas = '-dpng';
@@ -63,7 +64,7 @@ ExposureTime      = 125;  % Exposure Time, needed for Total Scan Time estimation
 MinimalQuality    = 20;  % minimal Quality for Simulation
 MaximalQuality    = 100;  % maximal Quality for Simulation     
 % QualityStepWidth  = str2num(UserInput{8});  % Quality StepWidth, generally 10%
-SimulationSize_px = 1000; %round(1000*rand);  % DownSizing Factor for Simulation > for Speedup
+SimulationSize_px = 1000; %;  % DownSizing Factor for Simulation > for Speedup
 % writeout          = str2num(UserInput{10}); % Do we write a PreferenceFile to disk at the end?
 % UserSampleName    = UserInput{11};          % SampleName For OutputFile, now without str2num, since it's already a string...
 
@@ -177,7 +178,7 @@ for Protocol = 1:size(ModelNumberOfProjections,1)
     % uses ModelSinogram and current NumberOfProjections as input
     ShowTheFigures = 0;
     [ AbsoluteError(Protocol), ErrorPerPixel(Protocol) ] = ...
-        fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction,ShowTheFigures);
+        fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction,SSIM,ShowTheFigures);
     pause(0.001);
 end
 close(h)

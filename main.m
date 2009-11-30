@@ -42,19 +42,19 @@ NumLines=1; % Number of Lines for the Boxes
 
 % The default Answers are...
 Defaults={...
-    '4.1',...   % 1
+    '4.2',...   % 1
     '2',...     % 2
     '10',...    % 3
-	'125',...   % 4
-    '100',...   % 5
+	'100',...   % 4
+    '75',...   % 5
     '20',...    % 6
     '100',...   % 7
     '10',...    % 8
     '150',...   % 9
     '1',...     % 10
-    '0',...     % 11
-    'R108C60Da',... % 12
-    '2009d',... % 13
+    '1',...     % 11
+    'WidefieldScan09f',... % 12
+    '2009f',... % 13
     };
  
 % Creates the Dialog box. Input is stored in UserInput array
@@ -169,7 +169,7 @@ for Protocol = 1:size(ModelNumberOfProjections,1)
     % uses ModelSinogram and current NumberOfProjections as input
     ShowTheFigures = 0;
     [ AbsoluteError(Protocol), ErrorPerPixel(Protocol) ] = ...
-        fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction,ShowTheFigures);
+        fct_ErrorCalculation(ModelImage,ModelNumberOfProjections(Protocol,:),ModelMaximalReconstruction,0,ShowTheFigures); % 0 is for classic calculation, 1 would use SSIM...
     pause(0.001);
 end
 close(h)
@@ -299,7 +299,7 @@ if writeout == 1
     % Hardcode path
 %        UserPath = printdir;
         if isunix
-            UserPath = [ '/sls/X02DA/Data3/e11126' filesep Beamtime ]
+            UserPath = [ '/sls/X02DA/Data10/e11126' filesep Beamtime ]
         else
             UserPath = [ 'P:\MATLAB\WideFieldScan' filesep 'PreferenceFiles' filesep Beamtime ]
         end
