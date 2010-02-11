@@ -16,7 +16,7 @@ end
 
 printit = 1;
 ShowTheErrorFigures = 0;
-SSIM = 1; % User SSIM to calculate the "Error". 0=DifferenceImage, 1=SSIM, 
+SSIM = 0; % User SSIM to calculate the "Error". 0=DifferenceImage, 1=SSIM, 
 writeas = '-dpng';
 
 FOV_mm            = 4;  % This is the FOV the user wants to achieve
@@ -27,7 +27,7 @@ Overlap_px        = 100;  % Overlap between the SubScans, needed for merging
 MinimalQuality    = 16;  % minimal Quality for Simulation
 MaximalQuality    = 100;  % maximal Quality for Simulation     
 QualityStepWidth  = 4.6666;  % Quality StepWidth, generally 10%
-SimulationSize_px = 1010;  % DownSizing Factor for Simulation > for Speedup
+SimulationSize_px = 64;  % DownSizing Factor for Simulation > for Speedup
 writeout          = 1; % Do we write a PreferenceFile to disk at the end?
 UserSampleName  = 'Paper';     % SampleName For OutputFile, now without str2num, since it's already a string...
 Beamtime     = 'Paper';     % Beamtime-Name, used for the path for writing the preference-file
@@ -55,8 +55,8 @@ disp(['Your sample could be ' num2str(ActualFOV_px - FOV_px) ' pixels wider and 
 
 NumberOfProjections = ...
     [ 5244, 5244, 5244;
-    5244, 2622, 5244;
-    4370, 4370, 4370;
+	5244, 2622, 5244;
+	4370, 4370, 4370;
     4370, 2185, 4370;
     3934, 3934, 3934;
     3934, 1967, 3934;
@@ -65,14 +65,14 @@ NumberOfProjections = ...
     3060, 3060, 3060;
     3060, 1530, 3060;
     2622, 2622, 2622;
-    2622, 1311, 2622;
-    2186, 2186, 2186;
-    2185, 1093, 2185;
-    1748, 1748, 1748;
-    1748,  874, 1748;
-    1312, 1312, 1312; 
-     874,  874,  874;
-      874, 437,  874;]
+	2622, 1311, 2622;
+	2186, 2186, 2186;
+	2185, 1093, 2185;
+	1748, 1748, 1748;
+	1748,  874, 1748;
+	1312, 1312, 1312; 
+	 874,  874,  874;
+	 874, 437,  874;]
 
 AmountOfProtocols=size(NumberOfProjections,1);
 
@@ -117,11 +117,24 @@ disp(['The actual FOV is ' num2str(ActualFOV_px) ' pixels, the set ModelSize is 
   ', we are thus reducing our calculations approx. ' num2str(round(1/ModelReductionFactor)) ' times.']);
 pause(0.001);
 
+
 ModelNumberOfProjections = round(NumberOfProjections .* ModelReductionFactor);
+%ModelNumberOfProjections = NumberOfProjections;
+
+
 disp('Generating ModelPhantom...');
-ModelImage = phantom( round( ActualFOV_px*ModelReductionFactor ) );
+usephantom = 0;
+if usephantom == 1
+    ModelImage = phantom( round( ActualFOV_px*ModelReductionFactor ) );
+    ModelImage = imnoise(ModelImage,'gaussian',0,0.005);
+    warndlg('using phantom for calculation');    
+else
+    ModelImage = imread('S:\SLS\2008c\mrg\R108C21Cb_mrg\original_rec_8bit\R108C21Cb_mrg1024.rec.8bit.tif');
+%    ModelImage = imresize(ModelImage,[ ActualFOV_px*ModelReductionFactor NaN ]);
+    warndlg('reading slice R108C21Cb_mrg1024.rec.8bit.tif as phantom');
+end
 ModelSize=size(ModelImage,1);
-ModelImage = imnoise(ModelImage,'gaussian',0,0.005);
+
 ModelDetectorWidth = round( DetectorWidth_px * ModelReductionFactor );
 theta = 1:179/ModelNumberOfProjections(1):180;
 disp('Calculating ModelSinogram...');

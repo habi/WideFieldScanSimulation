@@ -2,25 +2,26 @@ tic
 clear all;close all;clc;
 warning off Images:initSize:adjustingMag;
 
-% BeamTime = '2008c';
-% Protocols = [{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},...
-%     {'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'}];
-% SamplePrefix = 'R108C21C';
-% recFolder = 'rec_8bit';
+BeamTime = '2008c';
+Protocols = [{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'},{'i'},{'j'},...
+    {'k'},{'l'},{'m'},{'n'},{'o'},{'p'},{'q'},{'r'},{'s'},{'t'}];
+SamplePrefix = 'R108C21C';
+% recFolder = 'rec_8bit';resize2008c=1; % load cropped slices
+recFolder = 'original_rec_8bit';resize2008c=0; % load original slices
 
 % BeamTime = '2009a';
 % Protocols = [{'a'},{'b'},{'c'},{'d'},{'e'},{'f'},{'g'},{'h'}];
 % SamplePrefix = 'R108C36C';
 % recFolder = 'rec_8bit';
 
-BeamTime = '2009b';
-Protocols = [ ...
-    {'A'},{'Aa'},{'Ab'},{'Ac'}, ...
-    {'B'},{'Ba'},{'Bb'},{'Bc'}, ...
-    {'C'},{'Ca'},{'Cb'},{'Cc'}, ...
-    {'D'},{'Da'},{'Db'},{'Dc'}];
-SamplePrefix = 'R108C36B';
-recFolder = 'rec_8bit_';
+% BeamTime = '2009b';
+% Protocols = [ ...
+%     {'A'},{'Aa'},{'Ab'},{'Ac'}, ...
+%     {'B'},{'Ba'},{'Bb'},{'Bc'}, ...
+%     {'C'},{'Ca'},{'Cb'},{'Cc'}, ...
+%     {'D'},{'Da'},{'Db'},{'Dc'}];
+% SamplePrefix = 'R108C36B';
+% recFolder = 'rec_8bit_';
 
 % BeamTime = '2009c';
 % Protocols = [{'A'},{'B'},{'C'},{'D'},{'E'}];
@@ -46,14 +47,14 @@ end
 FilePath = fullfile(whereamI, PathToFiles);
     
 %% setup
-ResizeSize = 2800; % "1" = -> don't resize
-SlicesFrom = 200;
-SlicesStep = 34;
+ResizeSize = 500; % "1" = -> don't resize
+SlicesFrom = 250;
+SlicesStep = 15;
 SlicesTo = 1024;
 
-showFigures = 0;
+showFigures = 1;
 doThreshold = 0;
-writeToFiles = 1;
+writeToFiles = 0;
 
 %% read files, threshold them with Otsu and calculate error/similarity
 SliceCounter = 1;
@@ -76,10 +77,12 @@ for Slice = SlicesToDo
         disp(['Reading ' FileName]);
             Details(ProtocolCounter).RecTif = imread(FileName);
             if BeamTime == '2008c'
-                disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-                disp('!!! Sice @ Beamtime 2008c all shaved slices have different size, we`re resizing them to [952 2712] !!!');
-                disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-                Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[952 2712]);
+                if resize2008c == 1
+                    disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                    disp('!!! Sice @ Beamtime 2008c all cropped slices have different size, we`re resizing them to [952 2712] !!');
+                    disp('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+                    Details(ProtocolCounter).RecTif = imresize(Details(ProtocolCounter).RecTif,[952 2712]);
+                end
             end
         disp(cell2mat([ 'Slice ' num2str(Slice) ' of Protocol ' Protocols(ProtocolCounter) ...
             ' has a size of ' num2str(size(Details(ProtocolCounter).RecTif,1)) 'x' ...
@@ -266,8 +269,13 @@ figure
         
 if BeamTime == '2008c' %Scale the SSIM-Values from 16-116%
     scale = 16:116;
-    ImgSSIM = (ImgSSIM - min(min(ImgSSIM)))* ( (max(scale)-min(scale))/(max(max(ImgSSIM))-min(min(ImgSSIM))))+ min(scale) % scale ImgSSIM from 20:100, so we have the same plot as in the simulation...
+    Quality = max(max(ImgError)) - ImgError;
+    Quality = (Quality - min(min(Quality)))* ( (max(scale)-min(scale))/(max(max(Quality))-min(min(Quality))))+ min(scale) % scale from 20:100, so we have the same plot as in the simulation...
+    ImgSSIM = (ImgSSIM - min(min(ImgSSIM)))* ( (max(scale)-min(scale))/(max(max(ImgSSIM))-min(min(ImgSSIM))))+ min(scale) % scale from 20:100, so we have the same plot as in the simulation...
 end
+
+qualityplot=mean(Quality,2);
+qualitystddev=std(Quality,0,2);
 
 ssimplot=mean(ImgSSIM,2);
 ssimstddev=std(ImgSSIM,0,2);
@@ -299,7 +307,7 @@ if BeamTime == '2008c'
     
     ScanningTime = TotalProjectionsPerProtocol / max(TotalProjectionsPerProtocol) * 116;
     
-    figure       
+    figure % SSIM
         errorbar(ScanningTime(SortIndex),ssimplot(SortIndex),ssimstddev(SortIndex))
         title([ 'mean SSIM for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
         ylabel('mean SSIM(B,*)')
@@ -309,6 +317,16 @@ if BeamTime == '2008c'
         %set(gca,'XTickLabel',rot90(Protocols))
         addpath('P:\MATLAB\matlab2tikz\');
         matlab2tikz([ SSIMFileName '.tex']);
+    figure % Quality
+        errorbar(ScanningTime(SortIndex),qualityplot(SortIndex),qualitystddev(SortIndex))
+        title([ 'mean Quality for ' num2str(length(SlicesToDo)) ' Slices \pm Std-Dev' ])
+        ylabel('mean Quality(B,*) [%]')
+        xlabel(['Time used [Percent of Gold Standard]']);
+        %xTicks = [1:numel(Protocols)] ./ numel(Protocols) * ( max(ScanningTime) - min(ScanningTime)) + min(ScanningTime);
+        %set(gca,'XTick',xTicks)
+        %set(gca,'XTickLabel',rot90(Protocols))
+        addpath('P:\MATLAB\matlab2tikz\');
+        matlab2tikz([ ErrorFileName '.tex']);
 end
 
 if BeamTime == '2009b'
