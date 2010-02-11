@@ -8,7 +8,6 @@ WriteEveryXth = 1;
     warning off Images:initSize:adjustingMag % suppress the warning about big images, they are still displayed correctly, just a bit smaller..
    
     UserID = 'e11126';
-    Magnification = '10';
     currentLocation = pwd; % since we're 'cd'ing around, save the current location to go back to it at the end
     Cutlines = [];
     
@@ -17,8 +16,9 @@ WriteEveryXth = 1;
             whereamI = '/sls/X02DA/data';
         %slslc05
             %whereamI = '/afs/psi.ch/user/h/haberthuer/slsbl/x02da';
-        PathToFiles = [ 'Data3' filesep BeamTime];    
-        SamplePath = fullfile( whereamI , UserID , PathToFiles );
+        PathToFiles = [ 'Data10' filesep BeamTime];    
+        SamplePath = fullfile( whereamI , UserID , 'Data10', BeamTime );
+        WritePath = fullfile( whereamI , UserID , 'Data3', BeamTime );
         addpath([ whereamI filesep UserID filesep 'MATLAB'])
         addpath([ whereamI filesep UserID filesep 'MATLAB' filesep 'WideFieldScan']) 
         addpath([ whereamI filesep UserID filesep 'MATLAB' filesep 'SRuCT']) 
@@ -104,7 +104,8 @@ WriteEveryXth = 1;
         disp(['The ratio of acquired Projections for Subscan ' SubScanDetails(CurrentSubScan).SubScanName ...
             ' compared to the central SubScan is 1:' num2str(SubScanDetails(CurrentSubScan).ModuloToCenter) ]);
     end
-    pause(1)
+    pause(0.01)
+    disp('---');
     
     %% Average Darks
     for CurrentSubScan = 1:AmountOfSubScans
@@ -155,10 +156,11 @@ WriteEveryXth = 1;
                 % interpretations of Underscores and LaTeX-formatting of title
         end
     end
-    pause(1)
+    pause(0.001)
+    disp('---');
     
-    % load a subset of the images for the calculation of GlobalMin &
-    % GlobalMax
+    % load a subset of the images for the calculation of GlobalMin
+    % afterwards ask the user if he/she likes these values and proceed.
     GrayValueLoadHowMany = 100;
     GlobalMin = 0;
     GlobalMax = 0;
@@ -199,13 +201,23 @@ WriteEveryXth = 1;
         close(w);
         pause(0.001);
     end
-
-   clear TmpImage;
-   GlobalMin = GlobalMin - ( .25 * GlobalMin ); % set 25% lower for safety reasons
-   GlobalMax = GlobalMax + ( .25 * GlobalMax ); % set 25% higher for safety reasons
-   % disp(['The global minimal grayvalue is ' num2str(GlobalMin) ','])
-   % disp(['the global maximal grayvalue is ' num2str(GlobalMax) '.']);
-
+    clear TmpImage;
+    GlobalMin = GlobalMin - ( .25 * GlobalMin ); % set 25% lower for safety reasons
+    GlobalMax = GlobalMax + ( .25 * GlobalMax ); % set 25% higher for safety reasons
+    disp('---');
+    disp(['The global minimal grayvalue is ' num2str(GlobalMin) ','])
+    disp(['the global maximal grayvalue is ' num2str(GlobalMax) '.']);
+    warndlg('Confirm Greylevel values (Look in MATLABs window for accepting/correcting it','!! Warning !!')
+    disp('Do you like these grey level values?');
+    GreyValuesAreOK = input('[1]=yes, proceed, [0]=no, let me enter a better one: ');
+	if GreyValuesAreOK == 0
+        GlobalMin = input('Please enter your chosen minimal grey value (preferrably one from the logfile): ');
+        GlobalMax = input('Please enter your chosen minimal grey value (preferrably one from the logfile): ');
+        disp(['The NEW global minimal grayvalue is set to ' num2str(GlobalMin) ','])
+        disp(['The NEW global maximal grayvalue is set to ' num2str(GlobalMax) '.']);
+    end
+    disp('---');
+  
     %% loop over the images, calculate the cutline, save it for later and then
     %% perform the Merging
     
@@ -241,7 +253,8 @@ WriteEveryXth = 1;
                 disp(['Calculating cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
                     ' and ' SubScanDetails(CurrentSubScan).SubScanName ' (this will take some time...)']);
                 SubScanDetails(CurrentSubScan-1).Cutline = ...
-                    function_cutline(SubScanDetails(CurrentSubScan-1).CurrentProjection,SubScanDetails(CurrentSubScan).CurrentProjection);
+                    function_cutline((SubScanDetails(CurrentSubScan-1).CurrentProjection./SubScanDetails(CurrentSubScan-1).AverageFlat),(SubScanDetails(CurrentSubScan).CurrentProjection./SubScanDetails(CurrentSubScan-1).AverageFlat));
+                disp('---');
                 disp(['The cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
                     ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
                     num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);
@@ -255,6 +268,7 @@ WriteEveryXth = 1;
                     disp(['The NEW cutline between ' SubScanDetails(CurrentSubScan-1).SubScanName ...
                     ' and ' SubScanDetails(CurrentSubScan).SubScanName ' is ' ...
                     num2str(SubScanDetails(CurrentSubScan-1).Cutline) 'px.']);
+                disp('---');
                 end
             end
         end
@@ -396,11 +410,11 @@ WriteEveryXth = 1;
 %             SampleName = OutputSampleName;
 %         end
         
-        % Write Tiffs
+        % Write Tiffs 
         if Tiff == 1
             % mkdir for merged Proj
-            WriteDir = [ SamplePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
-            InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep PathToFiles  filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
+            WriteDir = [ WritePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
+            InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep 'Data3' filesep BeamTime filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
             [success,message,messageID] = mkdir(WriteDir);
             % disp(['writing ' OutputSampleName - ' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.tif to disk'])
             WriteTifName = [ WriteDir filesep OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
@@ -414,7 +428,7 @@ WriteEveryXth = 1;
         % write DMPs
         if Tiff == 0
             % mkdir for merged Proj
-            WriteDir = [ SamplePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'DMP' ];
+            WriteDir = [ WritePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'DMP' ];
             [success,message,messageID] = mkdir(WriteDir);
             % disp(['writing ' OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.DMP to disk'])
             WriteDMPName = [ WriteDir filesep OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
@@ -444,17 +458,17 @@ WriteEveryXth = 1;
     % --------------------Beamline Settings-------------------------
     dlmwrite(LogFile, ['--------------------Beamline Settings-------------------------'],'-append','delimiter','');
     % Ring current [mA]           : 400.650 
-    dlmwrite(LogFile, ['Ring current [mA]           : 400'],'-append','delimiter','');
+    dlmwrite(LogFile, ['Ring current [mA]           : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Beam energy  [keV]          : 15.072 
-    dlmwrite(LogFile, ['Beam energy  [keV]          : 12.600'],'-append','delimiter','');
+    dlmwrite(LogFile, ['Beam energy  [keV]          : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Monostripe                  : Ru/C 
-    dlmwrite(LogFile, ['Monostripe                  : Ru/C'],'-append','delimiter','');
+    dlmwrite(LogFile, ['Monostripe                  : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % --------------------Detector Settings-------------------------
     dlmwrite(LogFile, ['--------------------Detector Settings-------------------------'],'-append','delimiter','');
     % Objective                   : 10.00 
-    dlmwrite(LogFile, ['Objective                   : ' num2str(sprintf('%.2f',Magnification)) ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Objective                   : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Scintillator                : YAG:Ce 18 um 
-    dlmwrite(LogFile, ['Scintillator                : YAG:Ce 18 um'],'-append','delimiter','');
+    dlmwrite(LogFile, ['Scintillator                : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Exposure time [ms]          : 500 
     dlmwrite(LogFile, ['Exposure time [ms]          : (see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % ------------------------Scan Settings-------------------------
@@ -492,21 +506,24 @@ WriteEveryXth = 1;
     dlmwrite(LogFile, ['It`s a fake log-file, believe me!'],'-append','delimiter','');
     dlmwrite(LogFile, ['But the stuff below might be of value again...'],'-append','delimiter','');
     dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
-    dlmwrite(LogFile, ['Cutline between SubScan 1 and 2: ' num2str(SubScanDetails(1).Cutline) ' pixels' ],'-append','delimiter','');% Start logging activity...
-    dlmwrite(LogFile, ['Cutline between SubScan 2 and 3: ' num2str(SubScanDetails(2).Cutline) ' pixels' ],'-append','delimiter','');% Start logging activity...
+    dlmwrite(LogFile, ['Cutline between SubScan 1 and 2: ' num2str(SubScanDetails(1).Cutline) ' pixels' ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Cutline between SubScan 2 and 3: ' num2str(SubScanDetails(2).Cutline) ' pixels' ],'-append','delimiter','');
     if AmountOfSubScans == 5
         dlmwrite(LogFile, ['Cutline between SubScan 3 and 4: ' num2str(SubScanDetails(3).Cutline) ' pixels'],'-append','delimiter','');
         dlmwrite(LogFile, ['Cutline between SubScan 4 and 5: ' num2str(SubScanDetails(4).Cutline) ' pixels'],'-append','delimiter','');
     end
     dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
+    dlmwrite(LogFile, ['Minmal Grey level Value calculated by MATLAB: ' num2str(GlobalMin)  ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Minmal Grey level Value calculated by MATLAB: ' num2str(GlobalMax)  ],'-append','delimiter','');
+    dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
     
     disp('----');
     
     %% hardlink logfiles
-    LogFileDir = [ SamplePath filesep 'mrg' filesep 'log' ];
+    LogFileDir = [ WritePath filesep 'mrg' filesep 'log' ];
     [success,message,messageID] = mkdir(LogFileDir);
     if isunix == 1 % only works if @TOMCAT or @slslc05
-        logfilecommand = [ 'ln ' LogFile ' ' SamplePath filesep 'mrg' filesep 'log' filesep LogFileName ];
+        logfilecommand = [ 'ln ' LogFile ' ' WritePath filesep 'mrg' filesep 'log' filesep LogFileName ];
         disp(['Hard-Linking LogFile ' OutputSampleName OutputSuffix '-mrg.log with the command:']);
         disp([ '"' logfilecommand '"' ]);
         system(logfilecommand);

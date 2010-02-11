@@ -219,8 +219,8 @@ while 1:
   ## turn on for scanning
 
   ### turn on for testing
-#  scanstatus = 1
-#  testcounter = 10
+  #scanstatus = 1
+  #testcounter = 10
   ### turn on for testing
   while scanstatus == 1:
     time.sleep(1)
