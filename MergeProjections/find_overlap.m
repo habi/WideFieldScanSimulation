@@ -58,7 +58,7 @@ function [ overlap varargout ] =find_overlap(image1,image2,varargin)
     nrows = varargin{1};
   end
   if ( nargin > 3 ) && ( varargin{2} > 0 )
-    showfigs = varargin{2}
+    showfigs = varargin{2};
   end
   displacementplot = 0;
   if ( nargin > 4 ) && ( varargin{3} ~= 0 )
@@ -109,10 +109,10 @@ function [ overlap varargout ] =find_overlap(image1,image2,varargin)
 %    steps(searchwidth) = searchwidth;
   end
   if isnan( errvals(1) )
-    errvals(1) = errvals(2)
+    errvals(1) = errvals(2);
   end
   if isnan( errvals(length(errvals)) )
-    errvals(length(errvals)) = errvals(length(errvals) -1)
+    errvals(length(errvals)) = errvals(length(errvals) -1);
   end
   windowwidth = 5;
   if    ( nargin > 6 ) ...
@@ -120,7 +120,7 @@ function [ overlap varargout ] =find_overlap(image1,image2,varargin)
      && varargin{5} > 2
     windowwidth = varargin{5}
   end
-  filta=ones(1,windowwidth)./windowwidth
+  filta=ones(1,windowwidth)./windowwidth;
   filtb=1;
   rejectlimit = mean(errvals(find(~isnan(errvals))));
   origerrvals = errvals;
@@ -227,14 +227,14 @@ function [ overlap varargout ] =find_overlap(image1,image2,varargin)
     subplot(3,1,2);
     plot(steps,origerrvalsgrad,'linestyle','-');
     hold on;
-size(errvalsgrad)
-find(~isnan(errvalsgrad))
+size(errvalsgrad);
+find(~isnan(errvalsgrad));
     xxx = [ filtfilt(filta,filtb,errvalsgrad(2:length(errvalsgrad)-1))];
-size(xxx)
-max(xxx)
-mean(xxx)
-median(xxx)
-min(xxx)
+size(xxx);
+max(xxx);
+mean(xxx);
+median(xxx);
+min(xxx);
     plot(steps,filtfilt(filta,filtb,errvalsgrad'),'m-');
     plot([ displacement displacement ] , [ totalmin(2) totalmax(2) ],'--r');
     hold off;
