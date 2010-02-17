@@ -192,7 +192,7 @@ function [ overlap varargout ] =find_overlap(image1,image2,varargin)
   if nargout > 2 
     varargout{2} = errvals;
   end
-  steps = [ -detsize : detsize ]; ;
+  steps = [ -detsize : detsize ];
   if nargout > 3 
     varargout{3} = steps;
   end
@@ -286,10 +286,10 @@ function errval = correlate(image1,image2,rows,searchwidth,varargin)
   end
   if ( searchwidth < 0 ) 
     dat1 = image1(rows1,1:width1 - abs(searchwidth));% ./ range(3);
-    dat2 = ( image2(rows2,abs(searchwidth) + 1:width2) ) ;%./ range(3);
+    dat2 = ( image2(rows2,abs(searchwidth) + 1:width2) );% ./ range(3);
   else 
     dat1 = image1(rows1,searchwidth + 1:width1);% ./ range(3);
-    dat2 = image2(rows2,1:width2 - searchwidth) ;%./ range(3);
+    dat2 = image2(rows2,1:width2 - searchwidth);% ./ range(3);
   end
   diff = dat1 - dat2;
   [ width height ] = size(diff);

@@ -3,8 +3,7 @@
 % first version 12.02.2010
 clc;clear all;close all;
 
-ProjectionNumber = 1120;
-match = [2,3];
+ProjectionNumber = 1213;
 
 %% Loading Images
 Tmp = double(imread('C:\Documents and Settings\haberthuer\Desktop\21Bb\DarkImage.tif'));
@@ -31,67 +30,73 @@ Projection(:,:,3) = double(imread([ ...
     'R108C21Bb_s3' sprintf('%04d',ProjectionNumber) ...
     '.tif' ]));
 
-CorrProjection = ( Projection - Dark ) ./ Flat;
+CorrProjection = -log(( Projection - Dark ) ./ Flat);
 
 %% Displaying Images
 figure
-    subplot(321)
+    subplot(3,3,1)
         imshow(Dark(:,:,1),[])
         title('Dark')
-    subplot(322)
+	subplot(3,3,2)
         imshow(Flat(:,:,1),[])
         title('Flat')
-    subplot(323)
-        imshow(Projection(:,:,match(1)),[])
-        title(['SubScan s' num2str(match(1)) ', Proj ' num2str(ProjectionNumber) ])
-    subplot(324)
-        imshow(Projection(:,:,match(2)),[])
-        title(['SubScan s' num2str(match(2)) ', Proj ' num2str(ProjectionNumber) ])
-    subplot(325)
-        imshow(CorrProjection(:,:,match(1)),[])
-        title(['SubScan s' num2str(match(1)) ', Corrected Proj ' num2str(ProjectionNumber) ])
-    subplot(326)
-        imshow(CorrProjection(:,:,match(2)),[])
-        title(['SubScan s' num2str(match(2)) ', Corrected Proj ' num2str(ProjectionNumber) ])
-   
+    subplot(334)
+        imshow(Projection(:,:,1),[])
+        title(['SubScan s_1, Proj ' num2str(ProjectionNumber) ])
+    subplot(335)
+        imshow(Projection(:,:,2),[])
+        title(['SubScan s_2, Proj ' num2str(ProjectionNumber) ])
+    subplot(336)
+        imshow(Projection(:,:,3),[])
+        title(['SubScan s_3, Proj ' num2str(ProjectionNumber) ])     
+    subplot(337)
+        imshow(CorrProjection(:,:,1),[])
+        title(['SubScan s_1, Corrected Proj ' num2str(ProjectionNumber) ])
+    subplot(338)
+        imshow(CorrProjection(:,:,2),[])
+        title(['SubScan s_2, Corrected Proj ' num2str(ProjectionNumber) ])
+    subplot(339)
+        imshow(CorrProjection(:,:,2),[])
+        title(['SubScan s_3, Corrected Proj ' num2str(ProjectionNumber) ])
+       
 %% Cutline Extraction        
-calculatecutline = 1;
+calculatecutline = 0;
 if calculatecutline == 0
-    if match == [1,2]
-        disp('setting cutlines for subscans s1 & s2');
-        overlapold = 73;
-        overlapnew = 73;
-    elseif match == [2,3]
-        disp('setting cutlines for subscans s2 & s3');
-        overlapold = 65;
-        overlapnew = 65;
-    end
+    overlapold12 = 73;
+	overlapold23 = 65;
+    overlapnew12 = 73;
+    overlapnew23 = 65;
 else
-    overlapold = function_cutline(CorrProjection(:,:,match(1)),CorrProjection(:,:,match(2)));
-    overlapnew = find_overlap(CorrProjection(:,:,match(1)),CorrProjection(:,:,match(2)),128,2);
+    overlapold12 = function_cutline(CorrProjection(:,:,1),CorrProjection(:,:,2));
+	overlapold23 = function_cutline(CorrProjection(:,:,2),CorrProjection(:,:,3));
+    overlapnew12 = find_overlap(CorrProjection(:,:,1),CorrProjection(:,:,2),128,2);
+    overlapnew23 = find_overlap(CorrProjection(:,:,2),CorrProjection(:,:,3),128,2);
 
-    disp([ 'The `old` cutline is ' num2str(overlapold) ', the `new` one is ' num2str(overlapnew) '.' ])
-
-	if overlapold ~= overlapnew
-        f = warndlg('The two overlap methods did not yield the same overlap!', 'Overlap Problem!');
-    end
+    disp([ 'The `old` cutline is between s_1 and s_2 is ' num2str(overlapold12) ', the `new` one is ' num2str(overlapnew12) '.' ])
+    disp([ 'The `old` cutline is between s_2 and s_3 is ' num2str(overlapold23) ', the `new` one is ' num2str(overlapnew23) '.' ])
 end
 
 %% Merging
-MergedProjection = [ CorrProjection(:,1:end-overlapold,match(1)) CorrProjection(:,:,match(2)) ];
+MergedProjection = [ CorrProjection(:,1:end-overlapold12-1,1) ... % - (mean(mean(mean(CorrProjection)))/3) ...
+    CorrProjection(:,:,2) ...
+    CorrProjection(:,overlapold23+1:end,3) ... % + (mean(mean(mean(CorrProjection)))/3) ...
+    ];
 
 %% Display Merged Image
 figure
-    subplot(221)
-    	imshow(CorrProjection(:,:,match(1)),[])
-        title(['SubScan s' num2str(match(1)) ', Corrected Proj ' num2str(ProjectionNumber) ])
+    subplot(231)
+    	imshow(CorrProjection(:,:,1),[])
+        title(['SubScan s_1, Corrected Proj ' num2str(ProjectionNumber) ])
         hold on
-        plot(size(Projection,1)-overlapold,1:size(Projection,1),'--rs','LineWidth',2,'Color','g','MarkerSize',2)
-    subplot(222)
-    	imshow(CorrProjection(:,:,match(2)),[])
-        title(['SubScan s' num2str(match(2)) ', Corrected Proj ' num2str(ProjectionNumber) ])
+        plot(size(Projection,1)-overlapold12,1:size(Projection,1)-1,'Color','g')
+    subplot(232)
+    	imshow(CorrProjection(:,:,2),[])
+        title(['SubScan s_2, Corrected Proj ' num2str(ProjectionNumber) ])
+    subplot(233)
+    	imshow(CorrProjection(:,:,3),[])
+        title(['SubScan s_3, Corrected Proj ' num2str(ProjectionNumber) ])
         hold on
-        plot(overlapold,1:size(Projection,1),'--rs','LineWidth',2,'Color','r','MarkerSize',2)
-    subplot(2,2,3:4)
-    	imshow(MergedProjection,[])
-        title(['SubScan s' num2str(match(1)) ', Corrected Proj ' num2str(ProjectionNumber) ]) 
+        plot(overlapold23,1:size(Projection,1)-1,'Color','r')
+     subplot(2,3,4:6)
+     	imshow(MergedProjection,[])
+        title('Merged Subscans (with altered Brightness to make seams visible...)')
