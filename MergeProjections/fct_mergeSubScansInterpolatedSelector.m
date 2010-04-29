@@ -8,6 +8,7 @@ WriteEveryXth = 1;
     warning off Images:initSize:adjustingMag % suppress the warning about big images, they are still displayed correctly, just a bit smaller..
    
     UserID = 'e11126';
+    Magnification = '10';
     currentLocation = pwd; % since we're 'cd'ing around, save the current location to go back to it at the end
     Cutlines = [];
     
@@ -38,7 +39,7 @@ WriteEveryXth = 1;
     
     h=helpdlg(['I will now prompt you to select ' num2str(AmountOfSubScans) ...
         ' Directories for the SubScans which should be merged into one' ...
-        ' Scan called "' OutputSampleName OutputSuffix '-mrg". You only' ...
+        ' Scan called "' OutputSampleName OutputSuffix '_mrg". You only' ...
         ' need to select the root-directory of each SubScan, i`ll look for' ...
         ' the "tif" directory inside myself...' ],'Instructions');
     uiwait(h);
@@ -52,7 +53,7 @@ WriteEveryXth = 1;
         SubScanDetails(CurrentSubScan).Location = uigetdir(SamplePath,...
             [ 'Please locate SubScan Nr. ' num2str(CurrentSubScan) ' of ' ...
             num2str(AmountOfSubScans) ' to be merged into ' OutputSampleName ...
-            OutputSuffix '-mrg' ]);
+            OutputSuffix '_mrg' ]);
         [ tmp,SubScanDetails(CurrentSubScan).SubScanName,tmp ] = ...
             fileparts(SubScanDetails(CurrentSubScan).Location);
     end
@@ -287,11 +288,11 @@ WriteEveryXth = 1;
     
     %% Merge Files
     FromToTo = 1:WriteEveryXth:max([SubScanDetails.NumProj]); % go from zero to maximal amount of NumProj
-    w = waitbar(0,['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '-mrg to Disk.' ]);
+    w = waitbar(0,['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '_mrg to Disk.' ]);
     if Tiff == 1
-        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '-mrg as .tif.'])
+        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '_mrg as .tif.'])
     elseif Tiff == 0
-        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '-mrg as .DMP.'])
+        disp(['Writing ' num2str(length(FromToTo)) ' merged Projections of ' OutputSampleName OutputSuffix '_mrg as .DMP.'])
     end % writeDMP
 
     InterpolationCounter = 1;
@@ -413,11 +414,11 @@ WriteEveryXth = 1;
         % Write Tiffs 
         if Tiff == 1
             % mkdir for merged Proj
-            WriteDir = [ WritePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
-            InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep 'Data3' filesep BeamTime filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'tif' ];
+            WriteDir = [ WritePath filesep 'mrg' filesep OutputSampleName OutputSuffix '_mrg' filesep 'tif' ];
+            InLogFileDir = [ '/sls/X02DA/data' filesep UserID filesep 'Data3' filesep BeamTime filesep 'mrg' filesep OutputSampleName OutputSuffix '_mrg' filesep 'tif' ];
             [success,message,messageID] = mkdir(WriteDir);
-            % disp(['writing ' OutputSampleName - ' OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.tif to disk'])
-            WriteTifName = [ WriteDir filesep OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
+            % disp(['writing ' OutputSampleName - ' OutputSuffix '_mrg' num2str(sprintf('%04d',FileNumber)) '.tif to disk'])
+            WriteTifName = [ WriteDir filesep OutputSampleName OutputSuffix '_mrg' num2str(sprintf('%04d',FileNumber)) ];
             if NumDarks ~= 0 && NumFlats ~= 0
                 MergedProjection = MergedProjection - GlobalMin;
                 MergedProjection = MergedProjection ./ GlobalMax;
@@ -428,10 +429,10 @@ WriteEveryXth = 1;
         % write DMPs
         if Tiff == 0
             % mkdir for merged Proj
-            WriteDir = [ WritePath filesep 'mrg' filesep OutputSampleName OutputSuffix '-mrg' filesep 'DMP' ];
+            WriteDir = [ WritePath filesep 'mrg' filesep OutputSampleName OutputSuffix '_mrg' filesep 'DMP' ];
             [success,message,messageID] = mkdir(WriteDir);
-            % disp(['writing ' OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) '.DMP to disk'])
-            WriteDMPName = [ WriteDir filesep OutputSampleName OutputSuffix '-mrg' num2str(sprintf('%04d',FileNumber)) ];
+            % disp(['writing ' OutputSampleName OutputSuffix '_mrg' num2str(sprintf('%04d',FileNumber)) '.DMP to disk'])
+            WriteDMPName = [ WriteDir filesep OutputSampleName OutputSuffix '_mrg' num2str(sprintf('%04d',FileNumber)) ];
             writeDumpImage(MergedProjection,[WriteDMPName '.DMP']);
         end % writeDMP
         
@@ -443,9 +444,9 @@ WriteEveryXth = 1;
     % generate fake LogFile
     %%%%%%%%%%%%%%%%%
    
-    LogFileName = [ OutputSampleName OutputSuffix '-mrg.log' ];
+    LogFileName = [ OutputSampleName OutputSuffix '_mrg.log' ];
     LogFile = [ WriteDir filesep LogFileName ]; % WriteDir is used from above, so we have different paths depending on tif/DMP.
-    WriteSampleName = [ OutputSampleName OutputSuffix '-mrg' ];
+    WriteSampleName = [ OutputSampleName OutputSuffix '_mrg' ];
 
     disp('----');
     disp(['Generating fake logfile for the sample ' WriteSampleName '.' ]);
@@ -458,17 +459,17 @@ WriteEveryXth = 1;
     % --------------------Beamline Settings-------------------------
     dlmwrite(LogFile, ['--------------------Beamline Settings-------------------------'],'-append','delimiter','');
     % Ring current [mA]           : 400.650 
-    dlmwrite(LogFile, ['Ring current [mA]           : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Ring current [mA]           : (see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Beam energy  [keV]          : 15.072 
-    dlmwrite(LogFile, ['Beam energy  [keV]          : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Beam energy  [keV]          : (see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Monostripe                  : Ru/C 
-    dlmwrite(LogFile, ['Monostripe                  : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Monostripe                  : (see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % --------------------Detector Settings-------------------------
     dlmwrite(LogFile, ['--------------------Detector Settings-------------------------'],'-append','delimiter','');
     % Objective                   : 10.00 
-    dlmwrite(LogFile, ['Objective                   : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Objective                   : (see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Scintillator                : YAG:Ce 18 um 
-    dlmwrite(LogFile, ['Scintillator                : see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
+    dlmwrite(LogFile, ['Scintillator                : (see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % Exposure time [ms]          : 500 
     dlmwrite(LogFile, ['Exposure time [ms]          : (see original Logfile of ' SubScanDetails(1).SubScanName ')' ],'-append','delimiter','');
     % ------------------------Scan Settings-------------------------
@@ -524,16 +525,21 @@ WriteEveryXth = 1;
     [success,message,messageID] = mkdir(LogFileDir);
     if isunix == 1 % only works if @TOMCAT or @slslc05
         logfilecommand = [ 'ln ' LogFile ' ' WritePath filesep 'mrg' filesep 'log' filesep LogFileName ];
-        disp(['Hard-Linking LogFile ' OutputSampleName OutputSuffix '-mrg.log with the command:']);
+        disp(['Hard-Linking LogFile ' OutputSampleName OutputSuffix '_mrg.log with the command:']);
         disp([ '"' logfilecommand '"' ]);
         system(logfilecommand);
     end
     
     disp('----');
     %% generate sinograms
-    if isunix == 1 % only works if @TOMCAT,x02da-cons-2 or @slslc05...
-        sinogramcommand = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
-        disp(['Generating Sinograms for ' OutputSampleName OutputSuffix '-mrg with:']);
+    if isunix == 1 % only works if @TOMCAT,x02da-cons-2 or @slslc05...\
+        % WORKAROUND FOR NON-DISCOVERED BUG IN OLD PRJ2SIN, USES LOCAL COPY
+        % AT THE MOMENT
+            sinogramcommand = [ '~/Data3/sinooff_tomcat_j.py ' WriteDir ];
+        % WORKAROUND FOR NON-DISCOVERED BUG IN OLD PRJ2SIN, USES LOCAL COPY
+        % AT THE MOMENT
+            %sinogramcommand = [ '/work/sls/bin/sinooff_tomcat_j.py ' WriteDir ];
+        disp(['Generating Sinograms for ' OutputSampleName OutputSuffix '_mrg with:']);
         disp([ '"' sinogramcommand '"' ]);
         system(sinogramcommand);
     end
@@ -554,7 +560,7 @@ WriteEveryXth = 1;
         sekunde = sekunde - 60*minute;
         disp(['It took me approx ' num2str(round(minute)) ' minutes and ' ...
             num2str(round(sekunde/10)*10) ' seconds to merge the sample ' ...
-            OutputSampleName OutputSuffix '-mrg' ]);
+            OutputSampleName OutputSuffix '_mrg' ]);
     end    
 	disp('---');
     

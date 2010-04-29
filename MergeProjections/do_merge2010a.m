@@ -75,7 +75,7 @@ disp('Starting to merge');
 % OutputSuffix = 'b'; % R108C21B_s1.._s3
 % fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
-% %---
+%---
 
 % OutputSampleName = 'R108C04C';
 % OutputSuffix = 't'; % R108C04C_s1.._s3
@@ -100,7 +100,7 @@ disp('Starting to merge');
 % close all;
 %---
 
-OutputSampleName = 'R108C36C';
+% OutputSampleName = 'R108C36C';
 % OutputSuffix = '_B1'; % R108C36C_B1_s1.._s3
 % fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
@@ -109,9 +109,9 @@ OutputSampleName = 'R108C36C';
 % fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
 % close all;
 % %---
-OutputSuffix = '_B3'; % R108C36C_B3_s1.._s3
-fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
-close all;
+% OutputSuffix = '_B3'; % R108C36C_B3_s1.._s3
+% fct_mergeSubScansInterpolatedSelector(AmoutOfSubScans,NumDarks,NumFlats,Tiff,BeamTime,OutputSampleName,OutputSuffix)
+% close all;
 %---
 
 
