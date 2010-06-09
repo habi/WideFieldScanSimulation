@@ -3,26 +3,29 @@
 clc;clear all;close all
 
 %% Load Files
-for i=100:250:3500
-    disp(['Working on projection ' num2str(i) ])
-    disp('Reading Files')
-    Ia = double(imread(['R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_' sprintf('%04d',i) '.tif']));
-    Ib = double(imread(['R:\SLS\2010b\R108C04Aa_B1_s2_\tif\R108C04Aa_B1_s2_' sprintf('%04d',i) '.tif']));
-    DarkA = double(imread('R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_0004.tif'));
-    DarkB = double(imread('R:\SLS\2010b\R108C04Aa_B1_s2_\tif\R108C04Aa_B1_s2_0004.tif'));
-    FlatA = double(imread('R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_0040.tif'));
-    FlatB = double(imread('R:\SLS\2010b\R108C04Aa_B1_s2_\tif\R108C04Aa_B1_s2_0040.tif'));
-    Ia = mat2gray(log(FlatA-DarkA)-log(Ia-DarkA));
-    Ib = mat2gray(log(FlatB-DarkB)-log(Ib-DarkB));
+% for i=100:250:3500
+%     disp(['Working on projection ' num2str(i) ])
+%     disp('Reading Files')
+%     Ia = double(imread(['R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_' sprintf('%04d',i) '.tif']));
+%     Ib = double(imread(['R:\SLS\2010b\R108C04Aa_B1_s2_\tif\R108C04Aa_B1_s2_' sprintf('%04d',i) '.tif']));
+%     DarkA = double(imread('R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_0004.tif'));
+%     DarkB = double(imread('R:\SLS\2010b\R108C04Aa_B1_s2_\tif\R108C04Aa_B1_s2_0004.tif'));
+%     FlatA = double(imread('R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_0040.tif'));
+%     FlatB = double(imread('R:\SLS\2010b\R108C04Aa_B1_s2_\tif\R108C04Aa_B1_s2_0040.tif'));
+%     Ia = mat2gray(log(FlatA-DarkA)-log(Ia-DarkA));
+%     Ib = mat2gray(log(FlatB-DarkB)-log(Ib-DarkB));
 
+    Ia = imread('u:\Gruppe_Schittny\images\Sebastien\FotosR108C21C\R108C21C-043.tif');
+    Ib = imread('s:\SLS\2008c\mrg\R108C21Cc_mrg\rec_8bit\R108C21Cc_mrg0774.rec.8bit.tif');
+    
     %% Prepare Images for SIFT
     Ia = single(Ia);
     Ib = single(Ib);
 
     %Crop Images
-    CropTo = 444;
-    Ia = Ia(:,end-CropTo+1:end);
-    Ib = Ib(:,1:CropTo);
+    %CropTo = 444;
+    %Ia = Ia(:,end-CropTo+1:end);
+    %Ib = Ib(:,1:CropTo);
 
     %% Calculate SIFT
     disp('Calculating SIFT')
@@ -63,4 +66,4 @@ for i=100:250:3500
         subplot(122)
             imshow(MergedProjection,[])
     disp('---')
-end
+% end

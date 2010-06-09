@@ -18,7 +18,7 @@ addpath('P:\MATLAB\WideFieldScan')
 addpath('P:\MATLAB\SRuCT')
 
 ResizeFactor = .25;
-SlicesToLoadFromBottomStack = 30;
+SlicesToLoadFromBottomStack = 50;
 StepWidth = 1;
 
 %% Loading of the two Stacks
@@ -138,14 +138,14 @@ Detail(2).Correlation(1:SlicesToLoadFromBottomStack) = NaN; % Preallocate Correl
 for SliceNumber = 1:StepWidth:SlicesToLoadFromBottomStack
 	waitbar(SliceNumber/SlicesToLoadFromBottomStack,w,[ 'Loading Slice ' ...
         num2str(SliceNumber) '/' num2str(SlicesToLoadFromBottomStack) ' and ' ...
-        'extracting Correlation' ]);
+        'extracting Difference/Correlation' ]);
     Details(2).BottomStackFileName(SliceNumber).Name = [ Details(2).Location filesep RecName ...
         filesep Details(2).Name num2str(sprintf('%04d',SliceNumber)) '.rec.8bit.tif' ];
     TMP = imread(Details(2).BottomStackFileName(SliceNumber).Name);
     TMP = imresize(TMP, [ size(Details(1).TopStackLastSlice,1) size(Details(1).TopStackLastSlice,2) ], 'nearest'); % Resize to the same Size as TopStackLastSlice
     Details(2).BottomStack(:,:,SliceNumber) = TMP;
     Details(2).Difference(SliceNumber) = sum(sum(imabsdiff(double(Details(1).TopStackLastSlice),double(TMP))));
-    Details(2).Correlation(SliceNumber) = max(max(normxcorr2(double(Details(1).TopStackLastSlice),double(TMP))));
+%     Details(2).Correlation(SliceNumber) = max(max(normxcorr2(double(Details(1).TopStackLastSlice),double(TMP))));
 end
 clear TMP; close(w);
 
@@ -153,24 +153,24 @@ disp('---')
 
 %% Find Minima/Maxima and Index of it
 [DiffMin,DiffMinIdx] = min(Details(2).Difference);
-[CorrMax,CorrMaxIdx] = max(Details(2).Correlation);
+% [CorrMax,CorrMaxIdx] = max(Details(2).Correlation);
 
 disp([ 'The Difference Minima is at Image ' num2str(DiffMinIdx) ', thus you need to load Image ' Details(2).BottomStackFileName(DiffMinIdx).Name ]);
-disp([ 'The Correlation Maxima is at Image ' num2str(CorrMaxIdx) ', thus you need to load Image ' Details(2).BottomStackFileName(DiffMinIdx).Name ]);
+% disp([ 'The Correlation Maxima is at Image ' num2str(CorrMaxIdx) ', thus you need to load Image ' Details(2).BottomStackFileName(DiffMinIdx).Name ]);
 
 disp('---')
 
 disp([ 'Difference: Match ' Details(1).TopStackLastSliceName ' with ' Details(2).BottomStackFileName(DiffMinIdx).Name ]);
-disp([ 'Correlation: Match ' Details(1).TopStackLastSliceName ' with ' Details(2).BottomStackFileName(DiffMinIdx).Name ]);
+% disp([ 'Correlation: Match ' Details(1).TopStackLastSliceName ' with ' Details(2).BottomStackFileName(DiffMinIdx).Name ]);
 
 disp('---')
 
 
 %% Plot Correlation and Difference with Index
 figure
-    subplot(121)
+%     subplot(121)
         plot(Details(2).Difference(1:StepWidth:end))
-        title(['Difference Min @ Img. ' num2str(DiffMinIdx)])
-    subplot(122)
-        plot(Details(2).Correlation(1:StepWidth:end))
-        title(['Correlation Max @ Img. ' num2str(CorrMaxIdx)])
+        title(['Difference Minima is found  @ Image ' num2str(DiffMinIdx)])
+%     subplot(122)
+%         plot(Details(2).Correlation(1:StepWidth:end))
+%         title(['Correlation Maximum is found  @ Image ' num2str(CorrMaxIdx)])
