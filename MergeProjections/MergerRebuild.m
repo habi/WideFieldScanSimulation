@@ -276,6 +276,5 @@ for k=2500%(Data(i).NumDarks + Data(i).NumFlats +1):750:(Data(i).NumDarks + Data
         elseif MergeProjections == 0
             title('Mergeing will be done by prj2sin')
         end
-
     pause(0.001)
 end
