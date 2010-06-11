@@ -16,14 +16,16 @@ disp('');
 MergeProjections = 0;
 ResortProjections = 1;
 if MergeProjections == 1;
-    disp('Merging Projections');
+    disp('Will extract cutline and merge Projections');
+    OutPutTifDirName = 'tif_mrg';
 elseif MergeProjections == 0
-    disp('NOT Merging Projections');
+    disp('No Cutline Extraction, we let Prj2Sin handle it');
 end
 if ResortProjections == 1;
-    disp('Resorting Projections to XXX');
+    disp('Resorting Projections for Prj2sin');
+    OutPutTifDirName = 'tif_resort';
 elseif ResortProjections == 0;
-    disp('NOT Resorting Projections');
+    disp('NOT Resorting Projections, Everything is handled by MATLAB');
 end
 disp('');
 disp('---');
@@ -83,6 +85,7 @@ disp('---')
 %% Read Logfile for parsing the needed Data
 % (from http://is.gd/cAYfT)
 for i=1:AmountOfSubScans
+    disp(['Extracting Data from ' Data(i).LogFileName ]);
     fid = fopen(Data(i).LogFileLocation);
     LogFile = textscan(fid,'%s',ReadLinesOfLogFile,'delimiter','\n');
     LogFile = LogFile{1};
@@ -99,8 +102,15 @@ for i=1:AmountOfSubScans
     Data(i).SampleFolder = strtrim(TMP{12}{2});
     Data(i).Projections = str2double(strtrim(TMP{14}{2}));
     Data(i).NumDarks = str2double(strtrim(TMP{15}{2}));
-    Data(i).NumFlats = str2double(strtrim(TMP{16}{2}));
-    disp(['Extracting Data from ' Data(i).LogFileName ]);
+    Data(i).NumFlats = str2double(strtrim(TMP{16}{2}));     
+    Data(i).InterFlats = str2double(strtrim(TMP{17}{2}));
+    Data(i).InnerScan = str2double(strtrim(TMP{18}{2}));
+    Data(i).FlatFreq = str2double(strtrim(TMP{19}{2}));
+    Data(i).RotYmin = str2double(strtrim(TMP{20}{2}));
+    Data(i).RotYmax = str2double(strtrim(TMP{21}{2}));
+    Data(i).AngularStep = str2double(strtrim(TMP{22}{2}));
+    Data(i).SampleIn = str2double(strtrim(TMP{23}{2}));
+    Data(i).SampleOut = str2double(strtrim(TMP{24}{2}));    
 end
 disp('---');
 
@@ -196,26 +206,34 @@ end % MergeProjections == 1
 %% format which prj2sin can understand -> resorted...
 disp('---');
 disp('Loading Projections');
+
+%% Making new Directory
+disp('---');
+disp('Extracting Directory-Names of Projectios from all Subscans, making OutpuDirectory')
+[ log Starting Ending ] = regexp(LogFilePath, 'log', 'match', 'start', 'end');
+OutputDirectory = LogFilePath(1:Starting-1);
+[ s1 Starting Ending ] = regexp(Data(1).LogFileName, '_s1', 'match', 'start', 'end');
+MergedScanName = [ Data(1).LogFileName(1:Starting) 'mrg'];
+OutputDirectory = [OutputDirectory MergedScanName ];
+[ success,message] = mkdir([OutputDirectory filesep OutPutTifDirName ]);
+if MergeProjections == 1
+    what = 'Merging';
+elseif ResortProjections == 1
+    what = 'Resorting';
+end
+disp([ 'and ' what ' Files into ' OutputDirectory]);
+disp('---');
+
+if Data(1).NumDarks + Data(1).NumFlats + Data(1).Projections ...
+    + Data(1).Projections + Data(1).Projections + Data(3).NumFlats > 9999
+    Decimal = '%05d';
+else
+    Decimal = '%04d';
+end
+    
 for i=1:AmountOfSubScans
-    
-    %% Making new Directory
-    disp('---');
-    disp('Extracting Base-Name of all Subscans and making new Directory');
-    [ log Starting Ending ] = regexp(LogFilePath, 'log', 'match', 'start', 'end');
-    OutputDirectory = [ LogFilePath(1:Starting-1)];
-    [ s1 Starting Ending ] = regexp(Data(1).LogFileName, '_s1', 'match', 'start', 'end');
-    MergedScanName = [ Data(1).LogFileName(1:Starting) 'mrg'];
-    OutputDirectory = [OutputDirectory MergedScanName filesep 'tif_resort' ];
-    [ success,message] = mkdir(OutputDirectory);
-    if MergeProjections == 1
-        what = 'Merging';
-    elseif ResortProjections == 1
-        what = 'Resorting';
-    end
-    disp([ what ' Files into ' OutputDirectory]);
-    disp('---');
-    
-    for k=1:300:Data(i).NumDarks + Data(i).NumFlats + Data(i).Projections + Data(i).NumFlats
+    disp(['Working on SubScan s' num2str(i) ]); 
+    for k=1:Data(i).NumDarks + Data(i).NumFlats + Data(i).Projections + Data(i).NumFlats
         disp(['Working on Projection Nr. ' num2str(k) ' of SubScan ' num2str(i) ]);
     
         %% Cutline Extraction
@@ -255,51 +273,114 @@ for i=1:AmountOfSubScans
                 BlaBla = 1;
             end %isempty(BlaBla)
 
-            %% Showing Files
-            figure('Name',[ 'Projection ' num2str(k) ])
-            for i=1:AmountOfSubScans
-                subplot(3,3,i)
-                    imshow(Data(i).Projection,[])
-                    title(Data(i).SubScanName,'Interpreter','None')
-                subplot(3,3,i+3)
-                    imshow(Data(i).CorrectedProjection,[])
-                    title(['corr. Proj _s' num2str(i)],'Interpreter','None')                       
-            end
-                subplot(3,3,7:9)
-                if MergeProjections == 1
-                    imshow(MergedProjection,[])
-                    title(['Merged Projections ' num2str(k)])
-                elseif MergeProjections == 0
-                    title('Mergeing will be done by prj2sin')
-                end
-            pause(0.001)
+% % %             %% Showing Files
+% % %             figure('Name',[ 'Projection ' num2str(k) ])
+% % %             for i=1:AmountOfSubScans
+% % %                 subplot(3,3,i)
+% % %                     imshow(Data(i).Projection,[])
+% % %                     title(Data(i).SubScanName,'Interpreter','None')
+% % %                 subplot(3,3,i+3)
+% % %                     imshow(Data(i).CorrectedProjection,[])
+% % %                     title(['corr. Proj _s' num2str(i)],'Interpreter','None')                       
+% % %             end
+% % %                 subplot(3,3,7:9)
+% % %                 if MergeProjections == 1
+% % %                     imshow(MergedProjection,[])
+% % %                     title(['Merged Projections ' num2str(k)])
+% % %                 elseif MergeProjections == 0
+% % %                     title('Merging will be done by prj2sin')
+% % %                 end
+% % %             pause(0.001)
         end %MergeProjections
     
     	% Resorting Files for use with Prj2Sin
-        if ResortProjections == 1       
+        if ResortProjections == 1
             % Actually resorting the files
             Data(i).TotalFiles = Data(i).NumDarks + Data(i).NumFlats + ...
                 Data(i).Projections + Data(i).NumFlats;
             OriginalFile = [Data(i).SampleFolder filesep 'tif' ...               
                 filesep Data(i).SubScanName num2str(sprintf('%04d',k)) '.tif' ];
-            if AmountOfSubScans * Data(i).TotalFiles > 9999
-                Decimal = '%05d';
-            else
-                Decimal = '%04d';
-            end
-            DestinationFile = [ OutputDirectory filesep MergedScanName ...
-                num2str(sprintf(Decimal,k+((i-1)*Data(i).TotalFiles))) '.tif' ];
+%             % Since we do NOT want 
+%             % - the Flats at the end of s1
+%             % - all Darks and Flats for s2 and
+%             % - the Darks and Flats at the start of s3, we shift the
+%             % output-filenumber for EachSubScan.
+%             FileNumberShift(1) = 0;
+%             FileNumberShift(2) = Data(1).NumFlats + Data(2).NumDarks + Data(2).NumFlats;
+%             FileNumberShift(3) = FileNumberShift(2) + Data(2).NumFlats + Data(3).NumDarks + Data(3).NumFlats;
+            DestinationFile = [ OutputDirectory filesep OutPutTifDirName filesep MergedScanName ...
+                num2str(sprintf(Decimal,(AmountOfSubScans*k)-(AmountOfSubScans-i))) '.tif' ];
             if isunix
-                % hardlink files
-                what = 'Hardlinking';
-                ResortCommand = [ 'ln ' OriginalFile ' ' DestinationFile ];
+                what = 'Hardlink';
+                do = 'ln ';
             else
-                % copy files
-                what = 'Copying';
-                ResortCommand = [ 'cp ' OriginalFile ' ' DestinationFile ];
+                what = 'Copy';
+                do = 'cp';
             end
-            disp([ what ' ' OriginalFile ' to ' DestinationFile ])
-            system(ResortCommand);
+            ResortCommand = [ do ' ' OriginalFile ' ' DestinationFile ];
+            disp([ what 'ing Files to Merge-Directory' ]);
+            disp(ResortCommand);
+            system(ResortCommand);        
         end %ResortProjections
     end % k=1:TotalProj
+    disp('---');
 end % i=1:AmountOfSubScans
+
+disp('Done with Resorting');
+disp('---');
+
+disp(['Generating logfile for ' MergedScanName ]);
+LogFile = [ OutputDirectory filesep 'tif_resort' filesep MergedScanName '.log' ];
+dlmwrite(LogFile, ['User ID : ' Data(1).UserID],'delimiter','');
+dlmwrite(LogFile, ['Merged Projections from ' num2str(AmountOfSubScans) ' SubScans to ' MergedScanName '. Log was generated on ' datestr(now) ],'-append','delimiter','');
+dlmwrite(LogFile, ['--------------------Beamline Settings-------------------------'],'-append','delimiter','');
+dlmwrite(LogFile, ['Ring current [mA]           : ' num2str(mean([Data(1).RingCurrent Data(2).RingCurrent Data(3).RingCurrent])) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Beam energy  [keV]          : ' num2str(mean([Data(1).BeamEnergy Data(2).BeamEnergy Data(3).BeamEnergy])) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Monostripe                  : ' Data(1).Mono ],'-append','delimiter','');
+dlmwrite(LogFile, ['--------------------Detector Settings-------------------------'],'-append','delimiter','');
+dlmwrite(LogFile, ['Objective                   : ' num2str(Data(1).Objective) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Scintillator                : ' Data(1).Scintillator ],'-append','delimiter','');
+dlmwrite(LogFile, ['Exposure time [ms]          : ' num2str(Data(1).ExposureTime) ],'-append','delimiter','');
+dlmwrite(LogFile, ['------------------------Scan Settings-------------------------'],'-append','delimiter','');
+dlmwrite(LogFile, ['Sample folder                : ' OutputDirectory ],'-append','delimiter','');
+dlmwrite(LogFile, ['File Prefix                  : ' MergedScanName ],'-append','delimiter','');
+dlmwrite(LogFile, ['Number of projections        : ' num2str(Data(1).Projections + Data(2).Projections + Data(3).Projections) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Number of darks              : ' num2str(Data(1).NumDarks + Data(2).NumDarks + Data(3).NumDarks) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Number of flats              : ' num2str(2 * (Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats)) ],'-append','delimiter','');   
+dlmwrite(LogFile, ['Number of inter-flats        : ' num2str(Data(1).InterFlats) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Inner scan flag              : ' num2str(Data(1).InnerScan) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Flat frequency               : ' num2str(Data(1).FlatFreq) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Rot Y min position  [deg]    : ' num2str(Data(1).RotYmin) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Rot Y max position  [deg]    : ' num2str(Data(1).RotYmax) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Angular step [deg]           : ' num2str(Data(1).AngularStep) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Sample In   [um]             : ' num2str(Data(1).SampleIn) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Sample Out  [um]             : ' num2str(Data(1).SampleOut) ],'-append','delimiter','');
+dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
+
+%% Hardlink/Copy LogFile
+if isunix
+    what = 'Hardlink';
+    do = 'ln ';
+else
+    what = 'Copy';
+    do = 'cp';
+end
+disp([ what 'ing Logfile' ]);
+LogFileLinkCommand = [ do ' ' LogFile ' ' LogFilePath MergedScanName '.log' ];
+system(LogFileLinkCommand);
+disp('----');
+
+%% Sinogram generation.
+disp('Generating Sinograms');
+if isunix == 1
+    SinogramCommand = ( ['prj2sin ' OutputDirectory ' --AppendToScanLog ' ...
+        '--scanParameters ' num2str(Data(1).Projections + Data(2).Projections + Data(3).Projections)...
+        ',' num2str(Data(1).NumDarks + Data(2).NumDarks + Data(3).NumDarks)...
+        ',' num2str(Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats)...
+        ',0,0 ' ...
+        '-j 50 --stitched scan']);
+        disp(['Generating Sinograms for ' OutputDirectory ' with the command:']);
+        disp([ '"' SinogramCommand '"' ]);
+        system(SinogramCommand);
+end
+disp('----');
