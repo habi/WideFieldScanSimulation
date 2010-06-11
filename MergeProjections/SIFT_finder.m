@@ -16,7 +16,7 @@ DarkC = double(imread('R:\SLS\2010b\R108C04Aa_B1_s3_\tif\R108C04Aa_B1_s3_0004.ti
 FlatA = double(imread('R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_0040.tif'));
 FlatB = double(imread('R:\SLS\2010b\R108C04Aa_B1_s2_\tif\R108C04Aa_B1_s2_0040.tif'));
 FlatC = double(imread('R:\SLS\2010b\R108C04Aa_B1_s3_\tif\R108C04Aa_B1_s3_0040.tif'));
-for i=61:10:3638
+for i=100:100:3638
     counter = counter + 1;
     disp(['Working on projection ' num2str(i) ])
     disp('Reading Files')

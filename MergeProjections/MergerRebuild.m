@@ -11,6 +11,22 @@ WasDir = pwd;
 Drive = 'R'; BeamTime = '2010b'; % Setup for Windows
 ReadLinesOfLogFile = 33; % Lines to read for the Logfile, so we don't read in everything
 Cutline = [];
+disp('---');
+disp('');
+MergeProjections = 0;
+ResortProjections = 1;
+if MergeProjections == 1;
+    disp('Merging Projections');
+elseif MergeProjections == 0
+    disp('NOT Merging Projections');
+end
+if ResortProjections == 1;
+    disp('Resorting Projections to XXX');
+elseif ResortProjections == 0;
+    disp('NOT Resorting Projections');
+end
+disp('');
+disp('---');
 
 %% Ask the User what SubScans we should merge
 % h=helpdlg('Select the logfile of the FIRST SubScan I should merge',...
@@ -132,149 +148,158 @@ end
 disp('---');
 
 %%Load Darks and Flats
-disp('Loading Darks and Flats');
-for i=1:AmountOfSubScans
-    DarkBar = waitbar(0,[ 'Loading ' num2str(Data(i).NumDarks) ...
-        ' Darks for SubScan ' num2str(i)]);
-    for k=1:Data(i).NumDarks
-        Data(i).Dark(:,:,k) = double(imread([Data(i).SampleFolder filesep ...
-            'tif' filesep Data(i).SubScanName sprintf('%04d',k) '.tif' ]));
-        waitbar(k/Data(i).NumDarks,DarkBar);
-    end
-    close(DarkBar)
-    FlatBar = waitbar(0,[ 'Loading ' num2str(Data(i).NumFlats) ...
-        ' Flats for SubScan ' num2str(i)]);
-    for k=1:Data(i).NumFlats
-        Data(i).Flat(:,:,k) = double(imread([Data(i).SampleFolder filesep ...
-            'tif' filesep Data(i).SubScanName sprintf('%04d',k+Data(i).NumDarks) ...
-            '.tif' ]));
-        waitbar(k/Data(i).NumFlats,FlatBar);
-    end
-    close(FlatBar)
-end
-
-% Average Darks & Flats
-for i=1:AmountOfSubScans
-    Data(i).AverageDark = mean(Data(i).Dark,3);
-    Data(i).AverageFlat = mean(Data(i).Flat,3);
-end
-
-% Show Darks * Flats
-figure
+if MergeProjections == 1
+    disp('Loading Darks and Flats');
     for i=1:AmountOfSubScans
-        subplot(2,3,i)
-            imshow(Data(i).AverageDark,[])
-            title(['avg. Dark _s' num2str(1)],'Interpreter','none')
-        subplot(2,3,i+3)
-            imshow(Data(i).AverageFlat,[])
-            title(['avg. Flat _s' num2str(1)],'Interpreter','none')
+        DarkBar = waitbar(0,[ 'Loading ' num2str(Data(i).NumDarks) ...
+            ' Darks for SubScan ' num2str(i)]);
+        for k=1:Data(i).NumDarks
+            Data(i).Dark(:,:,k) = double(imread([Data(i).SampleFolder filesep ...
+                'tif' filesep Data(i).SubScanName sprintf('%04d',k) '.tif' ]));
+            waitbar(k/Data(i).NumDarks,DarkBar);
+        end
+        close(DarkBar)
+        FlatBar = waitbar(0,[ 'Loading ' num2str(Data(i).NumFlats) ...
+            ' Flats for SubScan ' num2str(i)]);
+        for k=1:Data(i).NumFlats
+            Data(i).Flat(:,:,k) = double(imread([Data(i).SampleFolder filesep ...
+                'tif' filesep Data(i).SubScanName sprintf('%04d',k+Data(i).NumDarks) ...
+                '.tif' ]));
+            waitbar(k/Data(i).NumFlats,FlatBar);
+        end
+        close(FlatBar)
     end
-disp('---');
+
+    % Average Darks & Flats
+    for i=1:AmountOfSubScans
+        Data(i).AverageDark = mean(Data(i).Dark,3);
+        Data(i).AverageFlat = mean(Data(i).Flat,3);
+    end
+
+    % Show Darks * Flats
+    figure
+        for i=1:AmountOfSubScans
+            subplot(2,3,i)
+                imshow(Data(i).AverageDark,[])
+                title(['avg. Dark _s' num2str(1)],'Interpreter','none')
+            subplot(2,3,i+3)
+                imshow(Data(i).AverageFlat,[])
+                title(['avg. Flat _s' num2str(1)],'Interpreter','none')
+        end
+    disp('---');
+end % MergeProjections == 1
 
 %% Loop over Projections
 %% To extract cutline (if wanted)
 %% show Files (if wanted)
 %% merge Projections (if wanted) or else just write them to disk in a
 %% format which prj2sin can understand -> resorted...
-MergeProjections = 0;
-ResortProjections = 1;
-if MergeProjections == 1;
-    disp('Merging Projections');
-elseif MergeProjections == 0
-    disp('NOT Merging Projections');
-end
-if ResortProjections == 1;
-    disp('Resorting Projections to XXX');
-elseif ResortProjections == 0;
-    disp('NOT Resorting Projections');
-end
 disp('---');
 disp('Loading Projections');
-for k=2500%(Data(i).NumDarks + Data(i).NumFlats +1):750:(Data(i).NumDarks + Data(i).NumFlats + Data(i).Projections + Data(i).NumFlats)
-    disp(['Working on Projections Nr. ' num2str(k) ]);
-    % Load Projections
-    for i=1:AmountOfSubScans
-        Data(i).Projection = imread([Data(i).SampleFolder filesep 'tif' ...
-                filesep Data(i).SubScanName num2str(sprintf('%04d',k)) '.tif' ]);
-        Data(i).Projection = double(Data(i).Projection);
-        Data(i).CorrectedProjection = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).Projection - Data(i).AverageDark);
-    end
+for i=1:AmountOfSubScans
     
-    %% Cutline Extraction
+    %% Making new Directory
+    disp('---');
+    disp('Extracting Base-Name of all Subscans and making new Directory');
+    [ log Starting Ending ] = regexp(LogFilePath, 'log', 'match', 'start', 'end');
+    OutputDirectory = [ LogFilePath(1:Starting-1)];
+    [ s1 Starting Ending ] = regexp(Data(1).LogFileName, '_s1', 'match', 'start', 'end');
+    MergedScanName = [ Data(1).LogFileName(1:Starting) 'mrg'];
+    OutputDirectory = [OutputDirectory MergedScanName filesep 'tif_resort' ];
+    [ success,message] = mkdir(OutputDirectory);
     if MergeProjections == 1
-        disp('Now Merging');
-        for i=1:AmountOfSubScans-1
+        what = 'Merging';
+    elseif ResortProjections == 1
+        what = 'Resorting';
+    end
+    disp([ what ' Files into ' OutputDirectory]);
+    disp('---');
+    
+    for k=1:300:Data(i).NumDarks + Data(i).NumFlats + Data(i).Projections + Data(i).NumFlats
+        disp(['Working on Projection Nr. ' num2str(k) ' of SubScan ' num2str(i) ]);
+    
+        %% Cutline Extraction
+        if MergeProjections == 1
+            % Load Projections
+            Data(i).Projection = imread([Data(i).SampleFolder filesep 'tif' ...
+                filesep Data(i).SubScanName num2str(sprintf('%04d',k)) '.tif' ]);
+            Data(i).Projection = double(Data(i).Projection);
+            Data(i).CorrectedProjection = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).Projection - Data(i).AverageDark);
+    
+            disp('Now Merging');
             if isempty(Data(i).Cutline)
                 disp('Extracting Cutline, this will take some time');
                 disp(['Extracting Cutline between _s' num2str(i) ' and _s' num2str(i+1) ]);
                 Data(i).Cutline = function_cutline(Data(i).CorrectedProjection,Data(i+1).CorrectedProjection);
             end
             disp(['The Cutline between _s' num2str(i) ' and _s' num2str(i+1) ' was found to be: ' num2str(Data(i).Cutline) ]);
-        end
-        disp('---');
-        
-       %% Merge Projections
-        Data(1).CroppedProjection = Data(1).CorrectedProjection(:,1:end-Data(1).Cutline);
-        Data(2).CroppedProjection = Data(2).CorrectedProjection;
-        Data(3).CroppedProjection = Data(3).CorrectedProjection(:,Data(2).Cutline+1:end);
-        MergedProjection = [ Data(1).CroppedProjection Data(2).CroppedProjection Data(3).CroppedProjection ];
-        BlaBla = [];
-        if isempty(BlaBla)
-            disp(['The original Projections have a size of ' num2str(size(Data(1).Projection,1)) ...
-                'x' num2str(size(Data(1).Projection,2)) ' pixels.' ]);
-            disp(['The cutlines were found to be ' num2str(Data(1).Cutline) ...
-                ' (s1:s2) and ' num2str(Data(2).Cutline) ' (s2:s3)']);
-            disp(['The merged Projection should thus have ' num2str(size(Data(1).Projection,1)) ...
-                'x' num2str((AmountOfSubScans*size(Data(1).Projection,1))-Data(1).Cutline-Data(2).Cutline) ...
-                ' pixels ((' num2str(AmountOfSubScans) '*' num2str(size(Data(1).Projection,1)) ...
-                ')-' num2str(Data(1).Cutline) '-' num2str(Data(2).Cutline) ')' ]);
-            disp(['In realty it has ' num2str(size(MergedProjection,1)) 'x' ...
-                num2str(size(MergedProjection,2)) ' pixels' ]);
-            BlaBla = 1;
-        end %isempty(BlaBla)
-    end %MergeProjections
+            disp('---');
+
+            %% Merge Projections
+            Data(1).CroppedProjection = Data(1).CorrectedProjection(:,1:end-Data(1).Cutline);
+            Data(2).CroppedProjection = Data(2).CorrectedProjection;
+            Data(3).CroppedProjection = Data(3).CorrectedProjection(:,Data(2).Cutline+1:end);
+            MergedProjection = [ Data(1).CroppedProjection Data(2).CroppedProjection Data(3).CroppedProjection ];
+            BlaBla = [];
+            if isempty(BlaBla)
+                disp(['The original Projections have a size of ' num2str(size(Data(1).Projection,1)) ...
+                    'x' num2str(size(Data(1).Projection,2)) ' pixels.' ]);
+                disp(['The cutlines were found to be ' num2str(Data(1).Cutline) ...
+                    ' (s1:s2) and ' num2str(Data(2).Cutline) ' (s2:s3)']);
+                disp(['The merged Projection should thus have ' num2str(size(Data(1).Projection,1)) ...
+                    'x' num2str((AmountOfSubScans*size(Data(1).Projection,1))-Data(1).Cutline-Data(2).Cutline) ...
+                    ' pixels ((' num2str(AmountOfSubScans) '*' num2str(size(Data(1).Projection,1)) ...
+                    ')-' num2str(Data(1).Cutline) '-' num2str(Data(2).Cutline) ')' ]);
+                disp(['In realty it has ' num2str(size(MergedProjection,1)) 'x' ...
+                    num2str(size(MergedProjection,2)) ' pixels' ]);
+                BlaBla = 1;
+            end %isempty(BlaBla)
+
+            %% Showing Files
+            figure('Name',[ 'Projection ' num2str(k) ])
+            for i=1:AmountOfSubScans
+                subplot(3,3,i)
+                    imshow(Data(i).Projection,[])
+                    title(Data(i).SubScanName,'Interpreter','None')
+                subplot(3,3,i+3)
+                    imshow(Data(i).CorrectedProjection,[])
+                    title(['corr. Proj _s' num2str(i)],'Interpreter','None')                       
+            end
+                subplot(3,3,7:9)
+                if MergeProjections == 1
+                    imshow(MergedProjection,[])
+                    title(['Merged Projections ' num2str(k)])
+                elseif MergeProjections == 0
+                    title('Mergeing will be done by prj2sin')
+                end
+            pause(0.001)
+        end %MergeProjections
     
-    %% Resorting Files for use with Prj2Sin
-    if ResortProjections == 1
-        %% Making new Directory
-        disp('Now Resorting');
-        disp('Extracting Base-Name of all Subscans and making new Directory');
-        [ Log Begin End ] = regexp(LogFilePath, 'log', 'match', 'start', 'end');
-        ResortDirectory = [ LogFilePath(1:Starting-1)];
-        [ s1 Log Begin End ] = regexp(Data(1).LogFileName, 's1', 'match', 'start', 'end');
-        MergeDirectoryName = [ Data(1).LogFileName(1:Starting)];
-        ResortDirectory = [ResortDirectory filesep MergeDirectoryName 'mrg' filesep 'tif' ];
-        [ success,message] = mkdir(ResortDirectory);
-        disp(['Resorting Files into ' ResortDirectory]);
-        
-        % Actually resorting the files
-        disp(['Resorting Files into ' ResortDirectory]);
-        disp(['Resorting Files into ' ResortDirectory]);
-        disp(['Resorting Files into ' ResortDirectory]);
-        disp(['Resorting Files into ' ResortDirectory]);
-        disp(['Resorting Files into ' ResortDirectory]);
-        disp(['Resorting Files into ' ResortDirectory]);
-        disp(['Resorting Files into ' ResortDirectory]);
-        disp(['Resorting Files into ' ResortDirectory]);
-        
-    end %ResortProjections
-       
-    %% Showing Files
-    figure('Name',[ 'Projection ' num2str(k) ])
-    for i=1:AmountOfSubScans
-        subplot(3,3,i)
-            imshow(Data(i).Projection,[])
-            title(Data(i).SubScanName,'Interpreter','None')
-        subplot(3,3,i+3)
-            imshow(Data(i).CorrectedProjection,[])
-            title(['corr. Proj _s' num2str(i)],'Interpreter','None')                       
-    end
-        subplot(3,3,7:9)
-        if MergeProjections == 1
-            imshow(MergedProjection,[])
-            title(['Merged Projections ' num2str(k)])
-        elseif MergeProjections == 0
-            title('Mergeing will be done by prj2sin')
-        end
-    pause(0.001)
-end
+    	% Resorting Files for use with Prj2Sin
+        if ResortProjections == 1       
+            % Actually resorting the files
+            Data(i).TotalFiles = Data(i).NumDarks + Data(i).NumFlats + ...
+                Data(i).Projections + Data(i).NumFlats;
+            OriginalFile = [Data(i).SampleFolder filesep 'tif' ...               
+                filesep Data(i).SubScanName num2str(sprintf('%04d',k)) '.tif' ];
+            if AmountOfSubScans * Data(i).TotalFiles > 9999
+                Decimal = '%05d';
+            else
+                Decimal = '%04d';
+            end
+            DestinationFile = [ OutputDirectory filesep MergedScanName ...
+                num2str(sprintf(Decimal,k+((i-1)*Data(i).TotalFiles))) '.tif' ];
+            if isunix
+                % hardlink files
+                what = 'Hardlinking';
+                ResortCommand = [ 'ln ' OriginalFile ' ' DestinationFile ];
+            else
+                % copy files
+                what = 'Copying';
+                ResortCommand = [ 'cp ' OriginalFile ' ' DestinationFile ];
+            end
+            disp([ what ' ' OriginalFile ' to ' DestinationFile ])
+            system(ResortCommand);
+        end %ResortProjections
+    end % k=1:TotalProj
+end % i=1:AmountOfSubScans
