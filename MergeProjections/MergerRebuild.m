@@ -23,29 +23,33 @@ else
     StartPath = [ filesep 'sls' filesep 'X02DA' ];
 end
 disp(['Opening ' StartPath ' to look for Logfiles'])
-[ LogFile, LogFilePath] = uigetfile({'*.log','LogFiles (*.log)'},'Pick the FIRST LogFile',...
-          [ StartPath filesep 'LogFile.log' ]);
+[ LogFile, LogFilePath] = uigetfile({'*.log','LogFiles (*.log)'},...
+    'Pick the FIRST LogFile',[ StartPath filesep 'LogFile.log' ]);
 [ SubScan Starting Ending] = regexp(LogFile, '_s1', 'match', 'start', 'end');
 
 %% See how many LogFiles we're having...
 for i=1:7
-    fid = fopen([ LogFilePath LogFile(1:Starting-1) '_s' num2str(i) LogFile(Ending+1:end) ]);
+    fid = fopen([ LogFilePath LogFile(1:Starting-1) '_s' num2str(i) ...
+        LogFile(Ending+1:end) ]);
     if fid==-1
-        disp([ 'Logfile ' LogFile(1:Starting-1) '_s' num2str(i) LogFile(Ending+1:end) ' does not exist'])
+        disp([ 'Logfile ' LogFile(1:Starting-1) '_s' num2str(i) LogFile(Ending+1:end) ...
+            ' does not exist'])
         AmountOfSubScans = i-1;
         if i==1
             disp('Did you really click on the first Logfile?')
         end
         break
     else
-        disp([ 'Logfile ' LogFile(1:Starting-1) '_s' num2str(i) LogFile(Ending+1:end) ' foud'])
+        disp([ 'Logfile ' LogFile(1:Starting-1) '_s' num2str(i) LogFile(Ending+1:end) ...
+            ' found'])
     end
     if fid ==-1 && i==1
         disp('FUCK')
         break
     end
 end
-disp([ 'I have found ' num2str(AmountOfSubScans) ' logfiles which seem to belong together in ' LogFilePath ])
+disp([ 'I have found ' num2str(AmountOfSubScans) ' logfiles which seem to belong together in ' ...
+    LogFilePath ])
 if AmountOfSubScans == 0
     disp('Quitting')
     break
@@ -124,9 +128,6 @@ disp('---');
 %% Construct Paths to read the Files
 if isunix == 1
     disp('We probably are @SLS, using Location from Logfiles')
-    for i=1:AmountOfSubScans
-        Data(i).SampleFolder;
-    end
 else
     disp('We probably are @Unibe, constructing new File-Locations')
     for i=1:AmountOfSubScans        
@@ -155,15 +156,16 @@ else
 end
 
 %% Load Darks and Flats
-LoadOneDarkAndFlat = 1; % To Speed Things up we only load ONE Dark and Flat for Cutline Detection... (set to 1!)
+LoadOneDarkAndFlat = 1;
+% To Speed Things up we only load ONE Dark and Flat for Cutline Detection... (set to 1!)
 for i=1:AmountOfSubScans
     if LoadOneDarkAndFlat == 1
-        disp(['Loading ONE Dark and Flat for ' Data(i).SubScanName ]);
-        k = 1;
+        disp(['Loading Dark ' num2str(round(Data(i).NumDarks/2)) ' and Flat '...
+            num2str(round(Data(i).NumFlats/2)) ' for ' Data(i).SubScanName ]);
         Data(i).AverageDark = double(imread([Data(i).SampleFolder filesep ...
-            'tif' filesep Data(i).SubScanName sprintf('%04d',k) '.tif' ]));
+            'tif' filesep Data(i).SubScanName sprintf('%04d',round(Data(i).NumDarks/2)) '.tif' ]));
         Data(i).AverageFlat = double(imread([Data(i).SampleFolder filesep ...
-            'tif' filesep Data(i).SubScanName sprintf('%04d',k+Data(i).NumDarks) ...
+            'tif' filesep Data(i).SubScanName sprintf('%04d',round(Data(i).NumFlats/2)) ...
             '.tif' ]));
     else
         disp(['Loading ALL Darks and Flats for ' Data(i).SubScanName ]);
@@ -185,13 +187,16 @@ for i=1:AmountOfSubScans
         end
         close(FlatBar)
         % Average Darks & Flats
-        for i=1:AmountOfSubScans
-            disp(['Averaging Darks and Flats for ' Data(i).SubScanName ]);
-            Data(i).AverageDark = mean(Data(i).Dark,3);
-            Data(i).AverageFlat = mean(Data(i).Flat,3);
-        end
     end % LoadOneDarkAndFlat
 end % i=1:AmountOfSubScans
+
+if LoadOneDarkAndFlat == 0 % Average Darks and Flats if we have multiple ones...
+    for i=1:AmountOfSubScans
+        disp(['Averaging Darks and Flats for SubScan s' num2str(i) ]);
+        Data(i).AverageDark = mean(Data(i).Dark,3);
+        Data(i).AverageFlat = mean(Data(i).Flat,3);
+    end
+end
 
 % Show Darks * Flats
 figure('name','Darks and Flats')
@@ -210,9 +215,11 @@ disp('Calculating Cutlines, this will take some time...');
 for i=1:AmountOfSubScans
     % Load First Projection
     Data(i).ProjectionNumberFirst = Data(1).NumDarks + Data(1).NumFlats + 1;
-    disp([ 'Reading Projection ' num2str(Data(i).ProjectionNumberFirst) ' of ' Data(i).SubScanName  ]);
+    disp([ 'Reading Projection ' num2str(Data(i).ProjectionNumberFirst) ...
+        ' of ' Data(i).SubScanName  ]);
     Data(i).ProjectionFirst = imread([Data(i).SampleFolder filesep 'tif' ...
-        filesep Data(i).SubScanName num2str(sprintf('%04d',Data(i).ProjectionNumberFirst)) '.tif' ]);
+        filesep Data(i).SubScanName num2str(sprintf('%04d',Data(i).ProjectionNumberFirst)) ...
+        '.tif' ]);
     Data(i).ProjectionFirst = double(Data(i).ProjectionFirst);
     Data(i).CorrectedProjectionFirst = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).ProjectionFirst - Data(i).AverageDark);  
     % Load Last Projection
@@ -231,6 +238,12 @@ for i=1:AmountOfSubScans-1
     disp(['Calculating cutline between SubScans s' num2str(i) ' and s' ...
         num2str(i+1) ' for projection ' num2str(Data(i).ProjectionNumberLast) ]);
     Data(i).CutlineLastProjections = function_cutline(Data(i).CorrectedProjectionLast,Data(i+1).CorrectedProjectionLast);
+    if Data(i).CutlineFirstProjections < 0
+        Data(i).CutlineFirstProjections = 1;
+    end
+    if Data(i).CutlineLastProjections < 0
+        Data(i).CutlineLastProjections = 1;
+    end
 end
 
 % Calculate merged Projections for Display Purposes
@@ -260,33 +273,31 @@ figure('name','Single and merged projections','position',[150 300 1400 500])
             num2str(Data(2).CutlineLastProjections) ],'interpreter','none')
 disp('---');
 
-
+%% SanityCheck of the Cutlines
 for i=1:AmountOfSubScans-1
     if Data(i).CutlineFirstProjections ~= Data(i).CutlineLastProjections
         disp([ 'Cutlines for the first and last projection for SubScan s' ...
             num2str(i) ' do not agree (' num2str(Data(i).CutlineFirstProjections) ' vs. ' ...
             num2str(Data(i).CutlineLastProjections) '),'])
-        WithinPixel = 3;
-        if round(Data(i).CutlineFirstProjections/WithinPixel) == round(Data(i).CutlineLastProjections/WithinPixel)
+        WithinPixel = 2;
+        if abs(Data(i).CutlineFirstProjections - Data(i).CutlineLastProjections) <= WithinPixel
             disp([ 'but lie within ' num2str(WithinPixel) ' pixels of each other.'])
             Data(i).Cutline = round(mean([Data(i).CutlineFirstProjections,Data(i).CutlineLastProjections]));
-            disp(['We thus use their mean and the new cutline between SubScan s ' ...
+            disp(['We thus use their mean and the new cutline between SubScan s' ...
                 num2str(i) ' and s' num2str(i+1) ' is: ' num2str(Data(i).Cutline) ])
         else
-            disp([ 'and are not within ' num2str(WithinPixel) ' pixels of each other.'])                
+            disp([ 'and are not within ' num2str(WithinPixel) ' pixels of each other.'])
             warndlg([ 'Cutlines for first and last projection differ for more than ' ...
-                num2str(WithinPixel) 'pixels, we thus need to enter them manually!'],'!! Warning !!')
-            for i=1:AmountOfSubScans-1
-                disp(['Please enter new cutline between SubScan s' num2str(i) ' and s'...
-                    num2str(i+1) ])
-                Data(i).Cutline = input('[px] ');
-            end
+                num2str(WithinPixel) ' pixels, we thus need to enter them manually!'],'!! Warning !!')
+            disp(['Please enter new cutline between SubScan s' num2str(i) ' and s'...
+                num2str(i+1) ])
+            Data(i).Cutline = input('[px] ');
         end
     else
         disp([ 'Cutlines for the first and last projection for SubScan s' ...
             num2str(i) ' are the same (' num2str(Data(i).CutlineFirstProjections) ' vs. ' ...
-            num2str(Data(i).CutlineLastProjections) ').'])
-        disp('So we just proceed and use these cutlines.')
+            num2str(Data(i).CutlineLastProjections) '), so we proceed with these...'])
+            Data(i).Cutline = Data(i).CutlineFirstProjections;
     end
 end
 disp('---');
@@ -297,8 +308,6 @@ for i=1:AmountOfSubScans-1
         Data(i).SubScanName ' and ' Data(i+1).SubScanName ])
 end
 disp('---');
-        
-break
 
 for i=1:AmountOfSubScans
     disp(['Working on SubScan s' num2str(i) ]); 
@@ -333,15 +342,15 @@ disp(['Generating logfile for ' MergedScanName ]);
 LogFile = [ OutputDirectory filesep 'tif_resort' filesep MergedScanName '.log' ];
 dlmwrite(LogFile, ['User ID : ' Data(1).UserID],'delimiter','');
 dlmwrite(LogFile, ['Merged Projections from ' num2str(AmountOfSubScans) ' SubScans to ' MergedScanName '. Log was generated on ' datestr(now) ],'-append','delimiter','');
-dlmwrite(LogFile, ['--------------------Beamline Settings-------------------------'],'-append','delimiter','');
+dlmwrite(LogFile, '--------------------Beamline Settings-------------------------','-append','delimiter','');
 dlmwrite(LogFile, ['Ring current [mA]           : ' num2str(mean([Data(1).RingCurrent Data(2).RingCurrent Data(3).RingCurrent])) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Beam energy  [keV]          : ' num2str(mean([Data(1).BeamEnergy Data(2).BeamEnergy Data(3).BeamEnergy])) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Monostripe                  : ' Data(1).Mono ],'-append','delimiter','');
-dlmwrite(LogFile, ['--------------------Detector Settings-------------------------'],'-append','delimiter','');
+dlmwrite(LogFile, '--------------------Detector Settings-------------------------','-append','delimiter','');
 dlmwrite(LogFile, ['Objective                   : ' num2str(Data(1).Objective) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Scintillator                : ' Data(1).Scintillator ],'-append','delimiter','');
 dlmwrite(LogFile, ['Exposure time [ms]          : ' num2str(Data(1).ExposureTime) ],'-append','delimiter','');
-dlmwrite(LogFile, ['------------------------Scan Settings-------------------------'],'-append','delimiter','');
+dlmwrite(LogFile, '------------------------Scan Settings-------------------------','-append','delimiter','');
 dlmwrite(LogFile, ['Sample folder                : ' OutputDirectory ],'-append','delimiter','');
 dlmwrite(LogFile, ['File Prefix                  : ' MergedScanName ],'-append','delimiter','');
 dlmwrite(LogFile, ['Number of projections        : ' num2str(Data(1).NumProjections + Data(2).NumProjections + Data(3).NumProjections) ],'-append','delimiter','');
@@ -355,7 +364,7 @@ dlmwrite(LogFile, ['Rot Y max position  [deg]    : ' num2str(Data(1).RotYmax) ],
 dlmwrite(LogFile, ['Angular step [deg]           : ' num2str(Data(1).AngularStep) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Sample In   [um]             : ' num2str(Data(1).SampleIn) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Sample Out  [um]             : ' num2str(Data(1).SampleOut) ],'-append','delimiter','');
-dlmwrite(LogFile, ['--------------------------------------------------------------'],'-append','delimiter','');
+dlmwrite(LogFile, '--------------------------------------------------------------','-append','delimiter','');
 
 %% Hardlink/Copy LogFile
 if isunix
@@ -381,7 +390,7 @@ SinogramCommand = ( ['prj2sin ' OutputDirectory ' --AppendToScanLog ' ...
 if isunix == 0
     disp(['I would now generate Sinograms for ' OutputDirectory ' with the command:']);
     disp([ '"' SinogramCommand '"' ]);
-    disp(['But since we are working on a windows machine, we are probably not at the Beamline...']);
+    disp('But since we are working on a windows machine, we are probably not at the Beamline...');
 else
     disp(['Generating Sinograms for ' OutputDirectory ' with the command:']);
     disp([ '"' SinogramCommand '"' ]);
