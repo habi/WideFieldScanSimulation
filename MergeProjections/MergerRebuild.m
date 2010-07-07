@@ -13,7 +13,7 @@ OutPutTifDirName = 'tif_resort';
 ReadLinesOfLogFile = 33; % Lines to read for the Logfile, so we don't read in everything
 
 %% Ask the User what SubScans we should merge
-h=helpdlg('Select the logfile of the FIRST SubScan I should merge',...
+h=helpdlg('Select the logfile of the FIRST SubScan I should merge. Look in the "log" folder of the BeamTime!',...
 	'Instructions');
 uiwait(h);
 pause(0.01);
@@ -322,7 +322,7 @@ for i=1:AmountOfSubScans
             num2str(sprintf(Decimal,(AmountOfSubScans*k)-(AmountOfSubScans-i))) '.tif' ];
         if isunix
             what = 'Hardlink';
-            do = 'ln ';
+            do = 'ln';
         else
             what = 'Copy';
             do = 'cp';
@@ -365,6 +365,10 @@ dlmwrite(LogFile, ['Angular step [deg]           : ' num2str(Data(1).AngularStep
 dlmwrite(LogFile, ['Sample In   [um]             : ' num2str(Data(1).SampleIn) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Sample Out  [um]             : ' num2str(Data(1).SampleOut) ],'-append','delimiter','');
 dlmwrite(LogFile, '--------------------------------------------------------------','-append','delimiter','');
+for i=1:AmountOfSubScans-1 % writing Cutlines to LogFile
+    dlmwrite(LogFile, [ 'Cutline between s' num2str(i) ' and s' num2str(i+1) '    : ' num2str(Data(i).Cutline) ' px' ],'-append','delimiter','');   
+end
+dlmwrite(LogFile, '--------------------------------------------------------------','-append','delimiter','');
 
 %% Hardlink/Copy LogFile
 if isunix
@@ -381,7 +385,7 @@ disp('----');
 
 %% Sinogram generation.
 disp('Generating Sinograms');
-SinogramCommand = ( ['prj2sin ' OutputDirectory ' --AppendToScanLog ' ...
+SinogramCommand = ( ['prj2sin ' OutputDirectory filesep OutPutTifDirName ' --AppendToScanLog ' ...
     '--scanParameters ' num2str(Data(1).NumProjections + Data(2).NumProjections + Data(3).NumProjections)...
     ',' num2str(Data(1).NumDarks + Data(2).NumDarks + Data(3).NumDarks)...
     ',' num2str(Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats)...
@@ -394,6 +398,8 @@ if isunix == 0
 else
     disp(['Generating Sinograms for ' OutputDirectory ' with the command:']);
     disp([ '"' SinogramCommand '"' ]);
+    disp('----');
     system(SinogramCommand);
 end
 disp('----');
+disp('Been there, done that. Means; I am finished with everything you have asked me...');
