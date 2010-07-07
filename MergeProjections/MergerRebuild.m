@@ -11,7 +11,6 @@ WasDir = pwd;
 Drive = 'R'; BeamTime = '2010b'; % Setup for Windows
 OutPutTifDirName = 'tif_resort';
 ReadLinesOfLogFile = 33; % Lines to read for the Logfile, so we don't read in everything
-Cutline = [];
 
 %% Ask the User what SubScans we should merge
 h=helpdlg('Select the logfile of the FIRST SubScan I should merge',...
@@ -53,9 +52,6 @@ if AmountOfSubScans == 0
 end
 Data(AmountOfSubScans).Dummy = NaN; % preallocate Structure for Speed-purposes
 for i=1:AmountOfSubScans
-    Data(i).Cutline = Cutline; % Initialize Cutlines empty (or with value set on Line ~13, so we can skip cutline-detection
-end
-for i=1:AmountOfSubScans
     disp(['-' LogFile(1:Starting-1) '_s' num2str(i) LogFile(Ending+1:end) ]);
     Data(i).LogFileLocation = [ LogFilePath LogFile(1:Starting-1) '_s' ...
         num2str(i) LogFile(Ending+1:end) ];
@@ -83,7 +79,7 @@ for i=1:AmountOfSubScans
     Data(i).Scintillator = strtrim(TMP{9}{2});
     Data(i).ExposureTime = str2double(strtrim(TMP{10}{2}));
     Data(i).SampleFolder = strtrim(TMP{12}{2});
-    Data(i).Projections = str2double(strtrim(TMP{14}{2}));
+    Data(i).NumProjections = str2double(strtrim(TMP{14}{2}));
     Data(i).NumDarks = str2double(strtrim(TMP{15}{2}));
     Data(i).NumFlats = str2double(strtrim(TMP{16}{2}));     
     Data(i).InterFlats = str2double(strtrim(TMP{17}{2}));
@@ -102,7 +98,7 @@ disp('---');
 if AmountOfSubScans == 3
     disp('According to the Logfiles we recorded:');      
     for i=1:AmountOfSubScans
-        disp([ num2str(Data(i).Projections) ' Projections, ' ...
+        disp([ num2str(Data(i).NumProjections) ' Projections, ' ...
             num2str(Data(i).NumDarks) ' Darks and '...
             num2str(Data(i).NumFlats) ' Flats for SubScan ' ...
             Data(i).SubScanName]);      
@@ -113,7 +109,7 @@ else
     break
 end
 % Projections
-Interpolation = Data(1).Projections / Data(2).Projections;
+Interpolation = Data(1).NumProjections / Data(2).NumProjections;
 if Interpolation == 1
     disp('SubScans _s1 and _s2 have an equal amount of Projections.')
     disp('No Interpolation necessary while merging');
@@ -151,8 +147,8 @@ OutputDirectory = [OutputDirectory MergedScanName ];
 disp([ 'and then finally resort Files into ' OutputDirectory]);
 disp('---');
 
-if Data(1).NumDarks + Data(1).NumFlats + Data(1).Projections ...
-    + Data(1).Projections + Data(1).Projections + Data(3).NumFlats > 9999
+if Data(1).NumDarks + Data(1).NumFlats + Data(1).NumProjections ...
+    + Data(1).NumProjections + Data(1).NumProjections + Data(3).NumFlats > 9999
     Decimal = '%05d';
 else
     Decimal = '%04d';
@@ -162,7 +158,7 @@ end
 LoadOneDarkAndFlat = 1; % To Speed Things up we only load ONE Dark and Flat for Cutline Detection... (set to 1!)
 for i=1:AmountOfSubScans
     if LoadOneDarkAndFlat == 1
-        disp(['Loading ONE Dark and Flat for SubScan s' num2str(i) ]);
+        disp(['Loading ONE Dark and Flat for ' Data(i).SubScanName ]);
         k = 1;
         Data(i).AverageDark = double(imread([Data(i).SampleFolder filesep ...
             'tif' filesep Data(i).SubScanName sprintf('%04d',k) '.tif' ]));
@@ -170,7 +166,7 @@ for i=1:AmountOfSubScans
             'tif' filesep Data(i).SubScanName sprintf('%04d',k+Data(i).NumDarks) ...
             '.tif' ]));
     else
-        disp(['Loading ALL Darks and Flats for SubScan s' num2str(i) ]);
+        disp(['Loading ALL Darks and Flats for ' Data(i).SubScanName ]);
         DarkBar = waitbar(0,[ 'Loading ' num2str(Data(i).NumDarks) ...
             ' Darks for SubScan ' num2str(i)]);
         for k=1:Data(i).NumDarks
@@ -190,7 +186,7 @@ for i=1:AmountOfSubScans
         close(FlatBar)
         % Average Darks & Flats
         for i=1:AmountOfSubScans
-            disp(['Averaging Darks and Flats for SubScan ' num2str(i) ]);
+            disp(['Averaging Darks and Flats for ' Data(i).SubScanName ]);
             Data(i).AverageDark = mean(Data(i).Dark,3);
             Data(i).AverageFlat = mean(Data(i).Flat,3);
         end
@@ -198,7 +194,7 @@ for i=1:AmountOfSubScans
 end % i=1:AmountOfSubScans
 
 % Show Darks * Flats
-figure
+figure('name','Darks and Flats')
     for i=1:AmountOfSubScans
         subplot(2,3,i)
             imshow(Data(i).AverageDark,[])
@@ -210,107 +206,107 @@ figure
 disp('---');
 
 %% Calculating Cutlines
-disp('Calculating Cutline, this will take some time...');
-disp('Calculating Cutline for the first Projection');
+disp('Calculating Cutlines, this will take some time...');
 for i=1:AmountOfSubScans
-    ProjectionNumber = Data(1).NumDarks + Data(1).NumFlats + 1;
-    Data(i).Projection = imread([Data(i).SampleFolder filesep 'tif' ...
-        filesep Data(i).SubScanName num2str(sprintf('%04d',ProjectionNumber)) '.tif' ]);
-    Data(i).Projection = double(Data(i).Projection);
-    Data(i).CorrectedProjection = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).Projection - Data(i).AverageDark);
+    % Load First Projection
+    Data(i).ProjectionNumberFirst = Data(1).NumDarks + Data(1).NumFlats + 1;
+    disp([ 'Reading Projection ' num2str(Data(i).ProjectionNumberFirst) ' of ' Data(i).SubScanName  ]);
+    Data(i).ProjectionFirst = imread([Data(i).SampleFolder filesep 'tif' ...
+        filesep Data(i).SubScanName num2str(sprintf('%04d',Data(i).ProjectionNumberFirst)) '.tif' ]);
+    Data(i).ProjectionFirst = double(Data(i).ProjectionFirst);
+    Data(i).CorrectedProjectionFirst = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).ProjectionFirst - Data(i).AverageDark);  
+    % Load Last Projection
+    Data(i).ProjectionNumberLast = Data(1).NumDarks + Data(1).NumFlats + Data(1).NumProjections;
+    disp([ 'Reading Projection ' num2str(Data(i).ProjectionNumberLast) ' of ' Data(i).SubScanName  ]);
+    Data(i).ProjectionLast = imread([Data(i).SampleFolder filesep 'tif' ...
+        filesep Data(i).SubScanName num2str(sprintf('%04d',Data(i).ProjectionNumberLast)) '.tif' ]);
+    Data(i).ProjectionLast = double(Data(i).ProjectionLast);
+    Data(i).CorrectedProjectionLast = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).ProjectionLast - Data(i).AverageDark);
 end
-for i=1:AmountOfSubScans-1
-    disp(['Calculating Cutline between SubScan s' num2str(i) ' and s' num2str(i+1) ]);
-    Data(i).Cutline = function_cutline(Data(i).CorrectedProjection,Data(i+1).CorrectedProjection);
-    disp(['The Cutline of the first projections was found to be: ' num2str(Data(i).Cutline) ]);
-end
-    % Calculate one merged Projection for Display Purposes
-    MergedProjection = [ Data(1).CorrectedProjection(:,1:end-Data(1).Cutline) Data(2).CorrectedProjection Data(3).CorrectedProjection(:,Data(2).Cutline:end) ];
-    figure
-        for i=1:AmountOfSubScans
-            subplot(2,3,i)
-                imshow(Data(i).CorrectedProjection,[])
-                title([ 's' num2str(i) ])
-        end
-        subplot(2,3,4:6)
-            imshow(MergedProjection,[])
-            title([ 'Merged Projection ' num2str(ProjectionNumber) ...
-                ', Cutlines: ' num2str(Data(1).Cutline) '/' ...
-                num2str(Data(2).Cutline) ])
-disp('---');
-disp('Calculating Cutline for the Last Projections');
-for i=1:AmountOfSubScans
-    ProjectionNumber = Data(1).NumDarks + Data(1).NumFlats + Data(1).Projections;
-    Data(i).Projection = imread([Data(i).SampleFolder filesep 'tif' ...
-        filesep Data(i).SubScanName num2str(sprintf('%04d',ProjectionNumber)) '.tif' ]);
-    Data(i).Projection = double(Data(i).Projection);
-    Data(i).CorrectedProjection = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).Projection - Data(i).AverageDark);
-end
-for i=1:AmountOfSubScans-1
-    disp(['Calculating Cutline between SubScan s' num2str(i) ' and s' num2str(i+1) ]);
-    Data(i).Cutline2 = function_cutline(Data(i).CorrectedProjection,Data(i+1).CorrectedProjection);
-    disp(['The Cutline for the last projections was found to be: ' num2str(Data(i).Cutline2) ]);
-end
-    % Calculate one merged Projection for Display Purposes
-    MergedProjection = [ Data(1).CorrectedProjection(:,1:end-Data(1).Cutline) Data(2).CorrectedProjection Data(3).CorrectedProjection(:,Data(2).Cutline:end) ];
-    figure
-        for i=1:AmountOfSubScans
-            subplot(2,3,i)
-                imshow(Data(i).CorrectedProjection,[])
-                title([ 's' num2str(i) ])
-        end
-        subplot(2,3,4:6)
-            imshow(MergedProjection,[])
-            title([ 'Merged Projection ' num2str(ProjectionNumber) ...
-                ', Cutlines: ' num2str(Data(1).Cutline2) '/' ...
-                num2str(Data(2).Cutline2) ])
-disp('---');
 
 for i=1:AmountOfSubScans-1
-    if Data(i).Cutline ~= Data(i).Cutline2
+    disp(['Calculating cutline between SubScans s' num2str(i) ' and s' ...
+        num2str(i+1) ' for projection ' num2str(Data(i).ProjectionNumberFirst) ]);
+    Data(i).CutlineFirstProjections = function_cutline(Data(i).CorrectedProjectionFirst,Data(i+1).CorrectedProjectionFirst);
+    disp(['Calculating cutline between SubScans s' num2str(i) ' and s' ...
+        num2str(i+1) ' for projection ' num2str(Data(i).ProjectionNumberLast) ]);
+    Data(i).CutlineLastProjections = function_cutline(Data(i).CorrectedProjectionLast,Data(i+1).CorrectedProjectionLast);
+end
+
+% Calculate merged Projections for Display Purposes
+Data(1).MergedProjectionFirst = [ Data(1).CorrectedProjectionFirst(:,1:end-Data(1).CutlineFirstProjections) ...
+    Data(2).CorrectedProjectionFirst Data(3).CorrectedProjectionFirst(:,Data(2).CutlineFirstProjections:end) ];
+Data(1).MergedProjectionLast = [ Data(1).CorrectedProjectionLast(:,1:end-Data(1).CutlineLastProjections) ...
+    Data(2).CorrectedProjectionLast Data(3).CorrectedProjectionLast(:,Data(2).CutlineLastProjections:end) ];
+
+figure('name','Single and merged projections','position',[150 300 1400 500])
+    for i=1:AmountOfSubScans
+        subplot(2,6,i)
+            imshow(Data(i).CorrectedProjectionFirst,[])
+            title([ Data(i).SubScanName num2str(sprintf('%04d',Data(i).ProjectionNumberFirst)) ],'interpreter','none')
+        subplot(2,6,i+3)
+            imshow(Data(i).CorrectedProjectionLast,[])
+            title([ Data(i).SubScanName num2str(sprintf('%04d',Data(i).ProjectionNumberLast)) ],'interpreter','none')
+    end
+    subplot(2,6,7:9)
+        imshow(Data(1).MergedProjectionFirst,[])
+        title([ MergedScanName num2str(sprintf('%04d',Data(i).ProjectionNumberFirst)) ...
+            ', Cutlines: ' num2str(Data(1).CutlineFirstProjections) '/' ...
+            num2str(Data(2).CutlineFirstProjections) ],'interpreter','none')
+    subplot(2,6,10:12)
+        imshow(Data(1).MergedProjectionLast,[])
+        title([ MergedScanName num2str(sprintf('%04d',Data(i).ProjectionNumberLast)) ...
+            ', Cutlines: ' num2str(Data(1).CutlineLastProjections) '/' ...
+            num2str(Data(2).CutlineLastProjections) ],'interpreter','none')
+disp('---');
+
+
+for i=1:AmountOfSubScans-1
+    if Data(i).CutlineFirstProjections ~= Data(i).CutlineLastProjections
         disp([ 'Cutlines for the first and last projection for SubScan s' ...
-            num2str(i) ' do not agree (' num2str(Data(i).Cutline) ' vs. ' ...
-            num2str(Data(i).Cutline2) ').'])
-        if round(Data(i).Cutline/3) == round(Data(i).Cutline2/3)
-            disp('But lie within 3 pixels of each other.')
-            Data(i).Cutline = round(mean([Data(i).Cutline,Data(i).Cutline2]));
+            num2str(i) ' do not agree (' num2str(Data(i).CutlineFirstProjections) ' vs. ' ...
+            num2str(Data(i).CutlineLastProjections) '),'])
+        WithinPixel = 3;
+        if round(Data(i).CutlineFirstProjections/WithinPixel) == round(Data(i).CutlineLastProjections/WithinPixel)
+            disp([ 'but lie within ' num2str(WithinPixel) ' pixels of each other.'])
+            Data(i).Cutline = round(mean([Data(i).CutlineFirstProjections,Data(i).CutlineLastProjections]));
             disp(['We thus use their mean and the new cutline between SubScan s ' ...
                 num2str(i) ' and s' num2str(i+1) ' is: ' num2str(Data(i).Cutline) ])
         else
-            disp('ENTER CUTLINES MANUALLY')
-            brea
+            disp([ 'and are not within ' num2str(WithinPixel) ' pixels of each other.'])                
+            warndlg([ 'Cutlines for first and last projection differ for more than ' ...
+                num2str(WithinPixel) 'pixels, we thus need to enter them manually!'],'!! Warning !!')
+            for i=1:AmountOfSubScans-1
+                disp(['Please enter new cutline between SubScan s' num2str(i) ' and s'...
+                    num2str(i+1) ])
+                Data(i).Cutline = input('[px] ');
+            end
         end
     else
         disp([ 'Cutlines for the first and last projection for SubScan s' ...
-            num2str(i) ' are the same (' num2str(Data(i).Cutline) ' vs. ' ...
-            num2str(Data(i).Cutline2) ').'])
+            num2str(i) ' are the same (' num2str(Data(i).CutlineFirstProjections) ' vs. ' ...
+            num2str(Data(i).CutlineLastProjections) ').'])
         disp('So we just proceed and use these cutlines.')
     end
 end
 disp('---');
 
-% % Calculate one merged Projection for Display Purposes
-% MergedProjection = [ Data(1).CorrectedProjection(:,1:end-Data(1).Cutline) Data(2).CorrectedProjection Data(3).CorrectedProjection(:,Data(2).Cutline:end) ];
-% 
-% figure
-%     for i=1:AmountOfSubScans
-%         subplot(2,3,i)
-%             imshow(Data(i).CorrectedProjection,[])
-%             title([ 'SubScan s' num2str(i) ])
-%     end
-%     subplot(2,3,4:6)
-%         imshow(MergedProjection,[])
-%         title('Merged Projection')
+%% Give out Cutlines, so User can control them
+for i=1:AmountOfSubScans-1
+	disp([ 'Using ' num2str(Data(i).Cutline) 'px as cutline between ' ...
+        Data(i).SubScanName ' and ' Data(i+1).SubScanName ])
+end
+disp('---');
         
 break
 
 for i=1:AmountOfSubScans
     disp(['Working on SubScan s' num2str(i) ]); 
-    for k=1:Data(i).NumDarks + Data(i).NumFlats + Data(i).Projections + Data(i).NumFlats
+    for k=1:Data(i).NumDarks + Data(i).NumFlats + Data(i).NumProjections + Data(i).NumFlats
         disp(['Working on Projection Nr. ' num2str(k) ' of SubScan ' num2str(i) ]);   
     	% Resorting Files for use with Prj2Sin
         Data(i).TotalFiles = Data(i).NumDarks + Data(i).NumFlats + ...
-            Data(i).Projections + Data(i).NumFlats;
+            Data(i).NumProjections + Data(i).NumFlats;
         OriginalFile = [Data(i).SampleFolder filesep 'tif' ...               
             filesep Data(i).SubScanName num2str(sprintf('%04d',k)) '.tif' ];
         DestinationFile = [ OutputDirectory filesep OutPutTifDirName filesep MergedScanName ...
@@ -348,7 +344,7 @@ dlmwrite(LogFile, ['Exposure time [ms]          : ' num2str(Data(1).ExposureTime
 dlmwrite(LogFile, ['------------------------Scan Settings-------------------------'],'-append','delimiter','');
 dlmwrite(LogFile, ['Sample folder                : ' OutputDirectory ],'-append','delimiter','');
 dlmwrite(LogFile, ['File Prefix                  : ' MergedScanName ],'-append','delimiter','');
-dlmwrite(LogFile, ['Number of projections        : ' num2str(Data(1).Projections + Data(2).Projections + Data(3).Projections) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Number of projections        : ' num2str(Data(1).NumProjections + Data(2).NumProjections + Data(3).NumProjections) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Number of darks              : ' num2str(Data(1).NumDarks + Data(2).NumDarks + Data(3).NumDarks) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Number of flats              : ' num2str(2 * (Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats)) ],'-append','delimiter','');   
 dlmwrite(LogFile, ['Number of inter-flats        : ' num2str(Data(1).InterFlats) ],'-append','delimiter','');
@@ -377,7 +373,7 @@ disp('----');
 %% Sinogram generation.
 disp('Generating Sinograms');
 SinogramCommand = ( ['prj2sin ' OutputDirectory ' --AppendToScanLog ' ...
-    '--scanParameters ' num2str(Data(1).Projections + Data(2).Projections + Data(3).Projections)...
+    '--scanParameters ' num2str(Data(1).NumProjections + Data(2).NumProjections + Data(3).NumProjections)...
     ',' num2str(Data(1).NumDarks + Data(2).NumDarks + Data(3).NumDarks)...
     ',' num2str(Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats)...
     ',0,0 ' ...
