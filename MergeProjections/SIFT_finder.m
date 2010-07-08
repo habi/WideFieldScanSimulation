@@ -8,6 +8,8 @@ tic
 MatchingThreshold = 2.5; %Threshold for SIFT-Matching 
 Factor = 15; % "Rounding" Factor for "are keypoints on the same height"?
 shift = 2; % Shift inbetween figures
+
+mkdir('C:\Documents and Settings\haberthuer\Desktop\sift')
 %% Load Files
 counter=0;
 DarkA = double(imread('R:\SLS\2010b\R108C04Aa_B1_s1_\tif\R108C04Aa_B1_s1_0004.tif'));
@@ -121,7 +123,6 @@ for i=100:100:3638
         end
 	filename = [ 'C:\Documents and Settings\haberthuer\Desktop\sift' filesep 'Mrg' sprintf('%04d',i) '.png'];
     print('-dpng',filename);
-    close(i+1)
     pause(0.1)
     disp('---')
 end

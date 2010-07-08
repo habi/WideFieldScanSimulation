@@ -7,6 +7,11 @@
 clc;clear all;close all;
 WasDir = pwd;
 
+% Parameter-Setup
+LoadOneDarkAndFlat = 1; % To Speed Things up we only load ONE Dark and Flat for Cutline Detection. If set to zero MATLAB loads ALL Darks and Flats
+HistogramEqualization = 1 % Equalize Histograms of Projections after loading them. Increases Contrast
+MatchingThreshold = 2; %Threshold for SIFT-Matching (use 'help vl_ubcmatch' to see what it does!)
+
 %% Setup
 Drive = 'R'; BeamTime = '2010b'; % Setup for Windows
 OutPutTifDirName = 'tif_resort';
@@ -148,16 +153,7 @@ OutputDirectory = [OutputDirectory MergedScanName ];
 disp([ 'and then finally resort Files into ' OutputDirectory]);
 disp('---');
 
-if Data(1).NumDarks + Data(1).NumFlats + Data(1).NumProjections ...
-    + Data(1).NumProjections + Data(1).NumProjections + Data(3).NumFlats > 9999
-    Decimal = '%05d';
-else
-    Decimal = '%04d';
-end
-
 %% Load Darks and Flats
-LoadOneDarkAndFlat = 1;
-% To Speed Things up we only load ONE Dark and Flat for Cutline Detection... (set to 1!)
 for i=1:AmountOfSubScans
     if LoadOneDarkAndFlat == 1
         disp(['Loading Dark ' num2str(round(Data(i).NumDarks/2)) ' and Flat '...
@@ -210,7 +206,7 @@ figure('name','Darks and Flats')
     end
 disp('---');
 
-%% Calculating Cutlines
+%% Calculating Cutlines with SIFT
 disp('Calculating Cutlines, this will take some time...');
 for i=1:AmountOfSubScans
     % Load First Projection
@@ -229,24 +225,62 @@ for i=1:AmountOfSubScans
         filesep Data(i).SubScanName num2str(sprintf('%04d',Data(i).ProjectionNumberLast)) '.tif' ]);
     Data(i).ProjectionLast = double(Data(i).ProjectionLast);
     Data(i).CorrectedProjectionLast = log(Data(i).AverageFlat - Data(i).AverageDark) - log(Data(i).ProjectionLast - Data(i).AverageDark);
+    % Adaptive Histogram Equalization, if desired...
+    if HistogramEqualization == 1
+        Data(i).CorrectedProjectionFirst = adapthisteq(Data(i).CorrectedProjectionFirst);
+        Data(i).CorrectedProjectionLast  = adapthisteq(Data(i).CorrectedProjectionLast);
+    end
+end
+
+for i=1:AmountOfSubScans
+    disp(['Calculating SIFT for SubScan s' num2str(i) '.' ]);
+    % Prepare Images for SIFT
+    Data(i).CorrectedProjectionFirst = single(mat2gray(Data(i).CorrectedProjectionFirst));
+    Data(i).CorrectedProjectionLast = single(mat2gray(Data(i).CorrectedProjectionLast));   
+    %% Calculate SIFT
+    disp(['Calculating SIFT for projection ' num2str(Data(i).ProjectionNumberFirst) ])
+    [Data(i).KeypointsFirst , Data(i).DescriptorFirst] = vl_sift(Data(i).CorrectedProjectionFirst);
+    disp(['Calculating SIFT for projection ' num2str(Data(i).ProjectionNumberLast) ])
+    [Data(i).KeypointsLast , Data(i).DescriptorLast] = vl_sift(Data(i).CorrectedProjectionLast);
 end
 
 for i=1:AmountOfSubScans-1
-    disp(['Calculating cutline between SubScans s' num2str(i) ' and s' ...
-        num2str(i+1) ' for projection ' num2str(Data(i).ProjectionNumberFirst) ]);
-    Data(i).CutlineFirstProjections = function_cutline(Data(i).CorrectedProjectionFirst,Data(i+1).CorrectedProjectionFirst);
-    disp(['Calculating cutline between SubScans s' num2str(i) ' and s' ...
-        num2str(i+1) ' for projection ' num2str(Data(i).ProjectionNumberLast) ]);
-    Data(i).CutlineLastProjections = function_cutline(Data(i).CorrectedProjectionLast,Data(i+1).CorrectedProjectionLast);
-    if Data(i).CutlineFirstProjections < 0
-        Data(i).CutlineFirstProjections = 1;
-    end
-    if Data(i).CutlineLastProjections < 0
-        Data(i).CutlineLastProjections = 1;
-    end
+    disp(['Calculating Matches between SubScan s' num2str(i) ' and s' num2str(i+1) ]);
+    disp(['Calculating Matches for projection ' num2str(Data(i).ProjectionNumberFirst) ])
+    [Data(i).MatchesFirst Data(i).Scores ] = vl_ubcmatch(Data(i).DescriptorFirst,Data(i+1).DescriptorFirst,MatchingThreshold);
+    disp(['Calculating Matches for projection ' num2str(Data(i).ProjectionNumberLast) ])
+    [Data(i).MatchesLast Data(i).ScoresLast ] = vl_ubcmatch(Data(i).DescriptorLast,Data(i+1).DescriptorLast,MatchingThreshold);
 end
 
-% Calculate merged Projections for Display Purposes
+figure('name','SIFT-Matches')
+    for i=1:AmountOfSubScans
+        subplot(2,3,i)
+            imshow(Data(i).CorrectedProjectionFirst,[])
+            if i==1
+                vl_plotframe(Data(i).KeypointsFirst(:,Data(i).MatchesFirst(1,:)),'r');
+            elseif i == 2
+                vl_plotframe(Data(i).KeypointsFirst(:,Data(i-1).MatchesFirst(2,:)),'r');
+                vl_plotframe(Data(i).KeypointsFirst(:,Data(i).MatchesFirst(1,:)),'g');
+            else
+                vl_plotframe(Data(i).KeypointsFirst(:,Data(i-1).MatchesFirst(2,:)),'g');
+            end
+            title([ 's' num2str(i) '/Proj.' num2str(Data(i).ProjectionNumberFirst) ])
+        subplot(2,3,i+3)
+            imshow(Data(i).CorrectedProjectionLast,[])
+            if i==1
+                vl_plotframe(Data(i).KeypointsLast(:,Data(i).MatchesLast(1,:)),'c');
+            elseif i == 2
+                vl_plotframe(Data(i).KeypointsLast(:,Data(i-1).MatchesLast(2,:)),'c');
+                vl_plotframe(Data(i).KeypointsLast(:,Data(i).MatchesLast(1,:)),'y');
+            else
+                vl_plotframe(Data(i).KeypointsLast(:,Data(i-1).MatchesLast(2,:)),'y');
+            end
+                        title([ 's' num2str(i) '/Proj.' num2str(Data(i).ProjectionNumberLast) ])
+    end
+
+break
+
+%% Calculate merged Projections for Display Purposes
 Data(1).MergedProjectionFirst = [ Data(1).CorrectedProjectionFirst(:,1:end-Data(1).CutlineFirstProjections) ...
     Data(2).CorrectedProjectionFirst Data(3).CorrectedProjectionFirst(:,Data(2).CutlineFirstProjections:end) ];
 Data(1).MergedProjectionLast = [ Data(1).CorrectedProjectionLast(:,1:end-Data(1).CutlineLastProjections) ...
@@ -309,6 +343,14 @@ for i=1:AmountOfSubScans-1
 end
 disp('---');
 
+%% See if we have +10000 Projections, set the Decimal of the Output-Counter and resort the Projections to the OutputDirectory
+if Data(1).NumDarks + Data(1).NumFlats + Data(1).NumProjections ...
+    + Data(1).NumProjections + Data(1).NumProjections + Data(3).NumFlats > 9999
+    Decimal = '%05d';
+else
+    Decimal = '%04d';
+end
+
 for i=1:AmountOfSubScans
     disp(['Working on SubScan s' num2str(i) ]); 
     for k=1:Data(i).NumDarks + Data(i).NumFlats + Data(i).NumProjections + Data(i).NumFlats
@@ -338,6 +380,7 @@ end % i=1:AmountOfSubScans
 disp('Done with Resorting');
 disp('---');
 
+%% Generate and Hardlink Logfile
 disp(['Generating logfile for ' MergedScanName ]);
 LogFile = [ OutputDirectory filesep 'tif_resort' filesep MergedScanName '.log' ];
 dlmwrite(LogFile, ['User ID : ' Data(1).UserID],'delimiter','');
@@ -370,7 +413,6 @@ for i=1:AmountOfSubScans-1 % writing Cutlines to LogFile
 end
 dlmwrite(LogFile, '--------------------------------------------------------------','-append','delimiter','');
 
-%% Hardlink/Copy LogFile
 if isunix
     what = 'Hardlink';
     do = 'ln';
@@ -402,4 +444,6 @@ else
     system(SinogramCommand);
 end
 disp('----');
+
+%% Finish
 disp('Been there, done that. Means; I am finished with everything you have asked me...');
