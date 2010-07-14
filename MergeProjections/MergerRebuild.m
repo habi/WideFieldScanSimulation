@@ -4,12 +4,12 @@
 % using most of the available stuff 
 % Initial Version: 3.6.2010
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-clc;clear all;close all;
+clc;clear all;close all;tic;
 WasDir = pwd;
 
 %% Setup
 Drive = 'R'; BeamTime = '2010b'; % Setup for Windows
-OutPutTifDirName = 'tif_resort';
+OutPutTifDirName = 'tif';
 ReadLinesOfLogFile = 33; % Lines to read for the Logfile, so we don't read in everything
 
 %% Ask the User what SubScans we should merge
@@ -20,7 +20,8 @@ pause(0.01);
 if isunix==0
     StartPath = [ Drive ':' filesep 'SLS' filesep BeamTime filesep ];
 else
-    StartPath = [ filesep 'sls' filesep 'X02DA' ];
+    StartPath = [ filesep 'sls' filesep 'X02DA' filesep 'data' filesep 'e11126' ];
+   
 end
 disp(['Opening ' StartPath ' to look for Logfiles'])
 [ LogFile, LogFilePath] = uigetfile({'*.log','LogFiles (*.log)'},...
@@ -160,7 +161,7 @@ LoadOneDarkAndFlat = 1;
 % To Speed Things up we only load ONE Dark and Flat for Cutline Detection... (set to 1!)
 for i=1:AmountOfSubScans
     if LoadOneDarkAndFlat == 1
-        disp(['Loading Dark ' num2str(round(Data(i).NumDarks/2)) ' and Flat '...
+        disp(['Loading Dark Nr. ' num2str(round(Data(i).NumDarks/2)) ' and Flat Nr. '...
             num2str(round(Data(i).NumFlats/2)) ' for ' Data(i).SubScanName ]);
         Data(i).AverageDark = double(imread([Data(i).SampleFolder filesep ...
             'tif' filesep Data(i).SubScanName sprintf('%04d',round(Data(i).NumDarks/2)) '.tif' ]));
@@ -170,7 +171,7 @@ for i=1:AmountOfSubScans
     else
         disp(['Loading ALL Darks and Flats for ' Data(i).SubScanName ]);
         DarkBar = waitbar(0,[ 'Loading ' num2str(Data(i).NumDarks) ...
-            ' Darks for SubScan ' num2str(i)]);
+            ' Darks for SubScan ' num2str(i)],'name','Please Wait...');
         for k=1:Data(i).NumDarks
             Data(i).Dark(:,:,k) = double(imread([Data(i).SampleFolder filesep ...
                 'tif' filesep Data(i).SubScanName sprintf('%04d',k) '.tif' ]));
@@ -178,7 +179,7 @@ for i=1:AmountOfSubScans
         end
         close(DarkBar)
         FlatBar = waitbar(0,[ 'Loading ' num2str(Data(i).NumFlats) ...
-            ' Flats for SubScan ' num2str(i)]);
+            ' Flats for SubScan ' num2str(i)],'name','Please Wait...');
         for k=1:Data(i).NumFlats
             Data(i).Flat(:,:,k) = double(imread([Data(i).SampleFolder filesep ...
                 'tif' filesep Data(i).SubScanName sprintf('%04d',k+Data(i).NumDarks) ...
@@ -309,10 +310,21 @@ for i=1:AmountOfSubScans-1
 end
 disp('---');
 
+%% Resorting Files
+if isunix
+    what = 'Hardlink';
+    do = 'ln';
+else
+    what = 'Copy';
+    do = 'cp';
+end
+disp([ what 'ing Files to Merge-Directory' ]);
 for i=1:AmountOfSubScans
-    disp(['Working on SubScan s' num2str(i) ]); 
+    % disp(['Working on SubScan s' num2str(i) ]);
+    ResortBar = waitbar(0,['Resorting ' num2str((Data(i).NumDarks + Data(i).NumFlats + Data(i).NumProjections + Data(i).NumFlats)) ...
+        ' projections for SubScan s' num2str(i)],'name','Please Wait...');
     for k=1:Data(i).NumDarks + Data(i).NumFlats + Data(i).NumProjections + Data(i).NumFlats
-        disp(['Working on Projection Nr. ' num2str(k) ' of SubScan ' num2str(i) ]);   
+        % disp(['Working on Projection Nr. ' num2str(k) ' of SubScan ' num2str(i) ]);
     	% Resorting Files for use with Prj2Sin
         Data(i).TotalFiles = Data(i).NumDarks + Data(i).NumFlats + ...
             Data(i).NumProjections + Data(i).NumFlats;
@@ -320,42 +332,37 @@ for i=1:AmountOfSubScans
             filesep Data(i).SubScanName num2str(sprintf('%04d',k)) '.tif' ];
         DestinationFile = [ OutputDirectory filesep OutPutTifDirName filesep MergedScanName ...
             num2str(sprintf(Decimal,(AmountOfSubScans*k)-(AmountOfSubScans-i))) '.tif' ];
-        if isunix
-            what = 'Hardlink';
-            do = 'ln';
-        else
-            what = 'Copy';
-            do = 'cp';
-        end
         ResortCommand = [ do ' ' OriginalFile ' ' DestinationFile ];
-        disp([ what 'ing Files to Merge-Directory' ]);
-        disp(ResortCommand);
-        system(ResortCommand);        
+        waitbar(k/(Data(i).NumDarks + Data(i).NumFlats + Data(i).NumProjections + Data(i).NumFlats));
+        % disp(ResortCommand);
+        [status,result] = system(ResortCommand);        
     end % k=1:TotalProj
-    disp('---');
+    close(ResortBar)
 end % i=1:AmountOfSubScans
-
 disp('Done with Resorting');
 disp('---');
 
 disp(['Generating logfile for ' MergedScanName ]);
-LogFile = [ OutputDirectory filesep 'tif_resort' filesep MergedScanName '.log' ];
+LogFile = [ OutputDirectory filesep OutPutTifDirName filesep MergedScanName '.log' ];
 dlmwrite(LogFile, ['User ID : ' Data(1).UserID],'delimiter','');
 dlmwrite(LogFile, ['Merged Projections from ' num2str(AmountOfSubScans) ' SubScans to ' MergedScanName '. Log was generated on ' datestr(now) ],'-append','delimiter','');
 dlmwrite(LogFile, '--------------------Beamline Settings-------------------------','-append','delimiter','');
-dlmwrite(LogFile, ['Ring current [mA]           : ' num2str(mean([Data(1).RingCurrent Data(2).RingCurrent Data(3).RingCurrent])) ],'-append','delimiter','');
-dlmwrite(LogFile, ['Beam energy  [keV]          : ' num2str(mean([Data(1).BeamEnergy Data(2).BeamEnergy Data(3).BeamEnergy])) ],'-append','delimiter','');
-dlmwrite(LogFile, ['Monostripe                  : ' Data(1).Mono ],'-append','delimiter','');
+dlmwrite(LogFile, ['Ring current [mA]            : ' num2str(mean([Data(1).RingCurrent Data(2).RingCurrent Data(3).RingCurrent])) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Beam energy  [keV]           : ' num2str(mean([Data(1).BeamEnergy Data(2).BeamEnergy Data(3).BeamEnergy])) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Monostripe                   : ' Data(1).Mono ],'-append','delimiter','');
 dlmwrite(LogFile, '--------------------Detector Settings-------------------------','-append','delimiter','');
-dlmwrite(LogFile, ['Objective                   : ' num2str(Data(1).Objective) ],'-append','delimiter','');
-dlmwrite(LogFile, ['Scintillator                : ' Data(1).Scintillator ],'-append','delimiter','');
-dlmwrite(LogFile, ['Exposure time [ms]          : ' num2str(Data(1).ExposureTime) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Objective                    : ' num2str(Data(1).Objective) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Scintillator                 : ' Data(1).Scintillator ],'-append','delimiter','');
+dlmwrite(LogFile, ['Exposure time [ms]           : ' num2str(Data(1).ExposureTime) ],'-append','delimiter','');
 dlmwrite(LogFile, '------------------------Scan Settings-------------------------','-append','delimiter','');
 dlmwrite(LogFile, ['Sample folder                : ' OutputDirectory ],'-append','delimiter','');
 dlmwrite(LogFile, ['File Prefix                  : ' MergedScanName ],'-append','delimiter','');
-dlmwrite(LogFile, ['Number of projections        : ' num2str(Data(1).NumProjections + Data(2).NumProjections + Data(3).NumProjections) ],'-append','delimiter','');
+dlmwrite(LogFile, ['Amount of SubScans           : ' num2str(AmountOfSubScans) ],'-append','delimiter','');
+for i=1:AmountOfSubScans % writing Cutlines to LogFile
+    dlmwrite(LogFile, [ 'Number of projections for s' num2str(i) ' : ' num2str(Data(i).NumProjections) ],'-append','delimiter','');   
+end
 dlmwrite(LogFile, ['Number of darks              : ' num2str(Data(1).NumDarks + Data(2).NumDarks + Data(3).NumDarks) ],'-append','delimiter','');
-dlmwrite(LogFile, ['Number of flats              : ' num2str(2 * (Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats)) ],'-append','delimiter','');   
+dlmwrite(LogFile, ['Number of flats              : ' num2str(Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats) ],'-append','delimiter','');   
 dlmwrite(LogFile, ['Number of inter-flats        : ' num2str(Data(1).InterFlats) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Inner scan flag              : ' num2str(Data(1).InnerScan) ],'-append','delimiter','');
 dlmwrite(LogFile, ['Flat frequency               : ' num2str(Data(1).FlatFreq) ],'-append','delimiter','');
@@ -384,13 +391,9 @@ system(LogFileLinkCommand);
 disp('----');
 
 %% Sinogram generation.
-disp('Generating Sinograms');
-SinogramCommand = ( ['prj2sin ' OutputDirectory filesep OutPutTifDirName ' --AppendToScanLog ' ...
-    '--scanParameters ' num2str(Data(1).NumProjections + Data(2).NumProjections + Data(3).NumProjections)...
-    ',' num2str(Data(1).NumDarks + Data(2).NumDarks + Data(3).NumDarks)...
-    ',' num2str(Data(1).NumFlats + Data(2).NumFlats + Data(3).NumFlats)...
-    ',0,0 ' ...
-    '-j 50 --stitched scan']);
+disp('Sinogram Generation');
+SinogramCommand = ( [ 'sinooff_tomcat_j_widefieldscan.py ' OutputDirectory filesep OutPutTifDirName ]);
+warndlg('Generating Sinograms. This takes at least 10 minutes and doesn`t give any feedback. Please be patient.', 'Sinogram Generation');
 if isunix == 0
     disp(['I would now generate Sinograms for ' OutputDirectory ' with the command:']);
     disp([ '"' SinogramCommand '"' ]);
@@ -399,7 +402,15 @@ else
     disp(['Generating Sinograms for ' OutputDirectory ' with the command:']);
     disp([ '"' SinogramCommand '"' ]);
     disp('----');
-    system(SinogramCommand);
+    [ status, result] = system(SinogramCommand);
 end
+
+disp([ 'If you don`t see any sinograms in ' OutputDirectory filesep 'sin, please execute the following command in a Terminal-Window of x02da-cons-2:']);
+disp(' ')
+disp(SinogramCommand)
+disp(' ')
+disp('to generate the Sinograms of the merged projections.');
+
 disp('----');
-disp('Been there, done that. Means; I am finished with everything you have asked me...');
+disp('Been there, done that. Means; I am finished with everything you have asked me.');
+disp([ 'The whole process took me around ' num2str(round(toc/60)) ' minutes' ]);

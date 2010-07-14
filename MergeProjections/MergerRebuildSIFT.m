@@ -9,7 +9,7 @@ WasDir = pwd;
 
 % Parameter-Setup
 LoadOneDarkAndFlat = 1; % To Speed Things up we only load ONE Dark and Flat for Cutline Detection. If set to zero MATLAB loads ALL Darks and Flats
-HistogramEqualization = 1 % Equalize Histograms of Projections after loading them. Increases Contrast
+HistogramEqualization = 1: % Equalize Histograms of Projections after loading them. Increases Contrast
 MatchingThreshold = 2; %Threshold for SIFT-Matching (use 'help vl_ubcmatch' to see what it does!)
 
 %% Setup
