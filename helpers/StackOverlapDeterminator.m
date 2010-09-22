@@ -89,17 +89,14 @@ if StackFound == 0 % Break program exectution if we haven't found file 1024 or 2
 end
 
 %% Calculate % Display Results
-% Look in top Images of second, third, ... stack for minimal difference to
-% bottom images of first, second, ... stack
 for i=2:AmountOfStacks
+    % Look in top Images of second, third, ... stack for minimal difference to
+    % bottom images of first, second, ... stack
     for k=1:ReadHowMany
         Stack(i).DifferenceImage(:,:,k)=imabsdiff(Stack(i-1).BottomImage,Stack(i).TopImages(:,:,k));
         Stack(i).Difference(k)=sum(sum(Stack(i).DifferenceImage(:,:,k)));
     end
-end
-
-%% Find Minima
-for i=2:AmountOfStacks
+    %% Find Minima
     [ TMP Stack(i).SliceNumberOfSliceWithMinimalDifference ] = min(Stack(i).Difference);
     disp(['Found Slice Nr. ' num2str(Stack(i).SliceNumberOfSliceWithMinimalDifference) ...
         ' of Stack B' num2str(i) ' to be the best match to the last slice of Stack B' ...
@@ -110,27 +107,27 @@ end
 figure(1)
     for i=2:AmountOfStacks
         subplot(3,AmountOfStacks,i)
-            plot(Stack(i).Difference)
-            title([ 'Difference(Bottom(B' num2str(i-1) '),Top(B' num2str(i) ')' ])
+            plot(Stack(i).Difference/max(Stack(i).Difference))
+            title([ 'Difference(Bottom(B' num2str(i-1) '),Top(B' num2str(i) '))' ])
     end
     for i=2:AmountOfStacks
         subplot(3,AmountOfStacks,i+AmountOfStacks)
             imshow(Stack(i).SliceWithMinimalDifference,[])
-            title(['B' num2str(i) ', best match:' num2str(Stack(i).SliceNumberOfSliceWithMinimalDifference) ])
+            title(['B' num2str(i) ', best match (Img. ' num2str(Stack(i).SliceNumberOfSliceWithMinimalDifference) ')'])
     end
     for i=1:AmountOfStacks-1
         subplot(3,AmountOfStacks,i+2*AmountOfStacks)
             imshow(Stack(i).BottomImage,[])
-            title(['B' num2str(i) ', bottom image'])
+            title(['B' num2str(i) ', bottom (Img. ' num2str(FileNumber) ')'])
     end
 
 disp('---')
 disp('To have a nice total stack for further processing, use')
 for i=1:AmountOfStacks
     if isempty(Stack(i).SliceNumberOfSliceWithMinimalDifference)
-        disp(['Slices 1:' num2str(FileNumber) ' of ' Stack(i).SampleName ])
+        disp(['Slices 1:' num2str(FileNumber) ' of ' SampleDirectory filesep Stack(i).SampleName ])
     else
-        disp(['Slices ' num2str(Stack(i).SliceNumberOfSliceWithMinimalDifference) ...
-            ':1024 of ' Stack(i).SampleName ])
+        disp(['Slices ' num2str(Stack(i).SliceNumberOfSliceWithMinimalDifference+1) ...
+            ':' num2str(FileNumber) ' of ' SampleDirectory filesep Stack(i).SampleName ])
     end
 end
